@@ -1,0 +1,14 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE / editor
+.claude/
+
+# Output (generated files)
+output/*.svg
+output/*.png

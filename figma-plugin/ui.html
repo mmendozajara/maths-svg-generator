@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Inter, system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+      color: #333;
+      padding: 16px;
+      background: #fff;
+    }
+    h2 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #1a1a1a;
+    }
+    .tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #e5e5e5;
+    }
+    .tab {
+      padding: 8px 16px;
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-size: 13px;
+      font-weight: 500;
+      color: #666;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .tab:hover { color: #333; }
+    .tab.active {
+      color: #2563EB;
+      border-bottom-color: #2563EB;
+    }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 4px;
+      color: #555;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 13px;
+      margin-bottom: 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input[type="text"]:focus { border-color: #2563EB; }
+    textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 12px;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    textarea:focus { border-color: #2563EB; }
+    .svg-input { height: 240px; }
+    .batch-input { height: 200px; }
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+    button {
+      padding: 8px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-primary {
+      background: #2563EB;
+      color: #fff;
+    }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
+    .btn-secondary {
+      background: #f3f4f6;
+      color: #333;
+    }
+    .btn-secondary:hover { background: #e5e7eb; }
+    .status {
+      margin-top: 12px;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      display: none;
+    }
+    .status.success { display: block; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+    .status.error { display: block; background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
+    .status.info { display: block; background: #eff6ff; color: #1e40af; border: 1px solid #93c5fd; }
+    .help {
+      margin-top: 12px;
+      padding: 10px;
+      background: #f9fafb;
+      border-radius: 6px;
+      font-size: 11px;
+      color: #666;
+      line-height: 1.5;
+    }
+    .details {
+      margin-top: 8px;
+      font-size: 11px;
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <h2>Maths SVG Importer</h2>
+
+  <div class="tabs">
+    <button class="tab active" data-panel="single">Single</button>
+    <button class="tab" data-panel="batch">Batch</button>
+  </div>
+
+  <!-- Single Import Panel -->
+  <div id="single" class="panel active">
+    <label for="svgName">Name</label>
+    <input type="text" id="svgName" placeholder="e.g., Number line 0-10" value="Maths Diagram">
+
+    <label for="svgInput">SVG Code</label>
+    <textarea id="svgInput" class="svg-input" placeholder="Paste SVG code here...&#10;&#10;&lt;svg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 260 260&quot;&gt;&#10;  ...&#10;&lt;/svg&gt;"></textarea>
+
+    <div class="btn-row">
+      <button class="btn-primary" id="importBtn">Import</button>
+      <button class="btn-secondary" id="clearBtn">Clear</button>
+    </div>
+  </div>
+
+  <!-- Batch Import Panel -->
+  <div id="batch" class="panel">
+    <label for="batchInput">Multiple SVGs (separated by --- on its own line)</label>
+    <textarea id="batchInput" class="batch-input" placeholder="Name: Number line&#10;&lt;svg ...&gt;...&lt;/svg&gt;&#10;---&#10;Name: Triangle&#10;&lt;svg ...&gt;...&lt;/svg&gt;"></textarea>
+
+    <div class="btn-row">
+      <button class="btn-primary" id="batchImportBtn">Import All</button>
+      <button class="btn-secondary" id="batchClearBtn">Clear</button>
+    </div>
+
+    <div class="help">
+      <strong>Format:</strong> Separate each SVG with <code>---</code> on its own line.
+      Optionally start each block with <code>Name: Your Name</code> on the first line.
+    </div>
+  </div>
+
+  <div id="statusBox" class="status"></div>
+
+  <script>
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.panel).classList.add('active');
+        hideStatus();
+      });
+    });
+
+    // Single import
+    document.getElementById('importBtn').addEventListener('click', () => {
+      const svgContent = document.getElementById('svgInput').value.trim();
+      const name = document.getElementById('svgName').value.trim() || 'Maths Diagram';
+
+      if (!svgContent) {
+        showStatus('error', 'Please paste SVG code first.');
+        return;
+      }
+      if (!svgContent.includes('<svg')) {
+        showStatus('error', 'Input does not appear to contain SVG code.');
+        return;
+      }
+
+      showStatus('info', 'Importing...');
+      parent.postMessage({ pluginMessage: { type: 'import-single', svgContent, name } }, '*');
+    });
+
+    // Clear
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      document.getElementById('svgInput').value = '';
+      hideStatus();
+    });
+
+    // Batch import
+    document.getElementById('batchImportBtn').addEventListener('click', () => {
+      const raw = document.getElementById('batchInput').value.trim();
+      if (!raw) {
+        showStatus('error', 'Please paste SVG blocks first.');
+        return;
+      }
+
+      const blocks = raw.split(/\n---\n/);
+      const svgList = [];
+
+      for (let i = 0; i < blocks.length; i++) {
+        const block = blocks[i].trim();
+        if (!block) continue;
+
+        let name = `Diagram ${i + 1}`;
+        let svg = block;
+
+        // Check for Name: prefix
+        const nameMatch = block.match(/^Name:\s*(.+)\n/);
+        if (nameMatch) {
+          name = nameMatch[1].trim();
+          svg = block.substring(nameMatch[0].length).trim();
+        }
+
+        if (svg.includes('<svg')) {
+          svgList.push({ name, svg });
+        }
+      }
+
+      if (svgList.length === 0) {
+        showStatus('error', 'No valid SVG blocks found.');
+        return;
+      }
+
+      showStatus('info', `Importing ${svgList.length} diagram(s)...`);
+      parent.postMessage({ pluginMessage: { type: 'import-batch', svgList } }, '*');
+    });
+
+    // Batch clear
+    document.getElementById('batchClearBtn').addEventListener('click', () => {
+      document.getElementById('batchInput').value = '';
+      hideStatus();
+    });
+
+    // Handle messages from plugin code
+    window.onmessage = (event) => {
+      const msg = event.data.pluginMessage;
+      if (!msg) return;
+
+      if (msg.type === 'success') {
+        showStatus('success', msg.message);
+      } else if (msg.type === 'error') {
+        showStatus('error', msg.message);
+      } else if (msg.type === 'batch-complete') {
+        let html = msg.message;
+        if (msg.details && msg.details.length > 0) {
+          html += '<div class="details">' + msg.details.join('\n') + '</div>';
+        }
+        showStatus('success', html);
+      }
+    };
+
+    function showStatus(type, message) {
+      const box = document.getElementById('statusBox');
+      box.className = 'status ' + type;
+      box.innerHTML = message;
+    }
+
+    function hideStatus() {
+      const box = document.getElementById('statusBox');
+      box.className = 'status';
+      box.innerHTML = '';
+    }
+  </script>
+</body>
+</html>

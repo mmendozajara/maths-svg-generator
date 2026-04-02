@@ -1,0 +1,39 @@
+project:
+  name: Maths SVG Image Generator
+  description: Generate mathematical diagrams as SVG from natural language descriptions
+models:
+  svg_generator: anthropic/claude-sonnet-4-5
+  image_validator: anthropic/claude-sonnet-4-5
+llm:
+  temperature: 0.2
+  max_tokens: 8192
+  max_retries: 2
+  validation_retries: 1
+  image_validation_retries: 3
+defaults:
+  width: 260
+  height: 260
+styling:
+  # Fonts (from Figma style guide)
+  font_family: Proxima Nova, Arial, Helvetica, sans-serif
+  math_font: KaTeX_Main
+  font_size: 16
+  line_height: 16
+  # Colors (Figma palette)
+  primary_color: '#25374B'       # Cloudburst — main text, strokes, labels
+  secondary_color: '#0875BE'     # Blue — headings, highlights, accent lines
+  fill_color: '#ACE3D9'          # Teal — shaded regions, filled areas
+  label_color: '#5E6D7F'         # Gray — secondary/descriptive text
+  background: '#FFFFFF'          # White
+  grid_color: '#E5E6E8'          # Light gray — grid lines
+  # Strokes (Figma line standards)
+  standard_stroke_width: 3       # Main shape outlines, axes
+  labelling_stroke_width: 2      # Dimension lines, annotations, arrows
+  dashed_stroke_pattern: '3,6'   # Dashed lines (construction, hidden edges)
+  stroke_linecap: round
+  stroke_linejoin: round
+  # Arrows (Figma arrow standards)
+  axis_arrow: triangle           # Solid triangle arrowheads for graph axes
+  indicator_arrow: line          # Simple line arrowheads for part indicators
+  # Points
+  point_radius: 4

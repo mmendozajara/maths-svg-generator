@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: maths-svg-generator
+    runtime: docker
+    plan: starter
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: IMGBB_API_KEY
+        sync: false
