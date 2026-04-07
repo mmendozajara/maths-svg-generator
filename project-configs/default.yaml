@@ -2,14 +2,14 @@ project:
   name: Maths SVG Image Generator
   description: Generate mathematical diagrams as SVG from natural language descriptions
 models:
-  svg_generator: anthropic/claude-sonnet-4-5
+  svg_generator: google/gemini-3.1-pro-preview-20260219
   image_validator: anthropic/claude-sonnet-4-5
 llm:
   temperature: 0.2
   max_tokens: 8192
   max_retries: 2
   validation_retries: 1
-  image_validation_retries: 3
+  image_validation_retries: 1
 defaults:
   width: 260
   height: 260
