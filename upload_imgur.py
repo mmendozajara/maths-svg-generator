@@ -89,7 +89,9 @@ def svg_to_png(svg_content: str, width: int = 260, height: int = 260) -> bytes:
     try:
         html = f"""<!DOCTYPE html>
 <html>
-<head><style>
+<head>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css">
+<style>
   html, body {{ margin: 0; padding: 0; width: {width}px; height: {height}px; background: white; overflow: hidden; }}
   svg {{ display: block; width: {width}px; height: {height}px; }}
 </style></head>
