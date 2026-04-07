@@ -70,67 +70,41 @@ You MUST only use these colours. Do NOT invent or use any other colour values:
 ## Diagram Type Guidelines
 
 ### Number Lines
-- Main axis: standard stroke (3px, #25374B, round cap) with solid triangle arrowheads (#25374B fill)
-- Major ticks: labelling stroke (2px) tall marks with number labels below (16px, #25374B)
-- Minor ticks: labelling stroke (2px) shorter marks, no labels
-- Marked/highlighted points: filled circles (radius = point_radius) in blue (#0875BE) ABOVE the line, with bold labels above
-- Open circles for exclusive endpoints on intervals
-- Intervals/ranges: coloured line segments (3px) along the axis between endpoints
-- Centre the number line vertically in the SVG
-- Tick labels should be centred below each tick mark
+- Main axis: standard stroke with solid triangle arrowheads
+- Major ticks: labelling stroke, number labels below (16px). Minor ticks: labelling stroke, no labels
+- Marked points: filled circles (point_radius) in blue (#0875BE) ABOVE the line, bold labels above
+- Open circles for exclusive endpoints. Intervals: coloured segments (3px) between endpoints
+- Centre vertically. Tick labels centred below each tick
 
 ### Coordinate Graphs
-- Axes: standard stroke (3px, #25374B, round cap) with solid triangle arrowheads at positive ends
-- Label axes (x, y or custom labels) in 16px #25374B
-- Grid lines: thin (0.5px, #E5E6E8) — draw if the description implies precision
-- Axis numbers at each major tick (16px, #25374B), positioned outside the plot area
-- Axis tick marks: labelling stroke (2px, #25374B)
-- Origin label "O" or "0" at the intersection (bottom-left of the origin)
-- Points: filled circles (#0875BE for emphasis, #25374B for regular) with optional labels offset to avoid the point
-- Line segments: standard stroke (3px, #25374B) connecting specified points
-- Functions/curves: plot as smooth polylines (3px) with ~100-200 sample points across the visible x range
-  - For linear functions: 2 points are enough
-  - For quadratic/cubic: sample densely near turning points
-  - Discontinuities (e.g., 1/x at x=0): leave a gap, do not connect across asymptotes
-- Multiple functions: use #25374B for first, #0875BE for second. Add a legend if needed.
+- Axes: standard stroke with triangle arrowheads at positive ends. Label axes 16px #25374B
+- Grid lines: 0.5px #E5E6E8 if precision needed. Tick marks: labelling stroke. Origin: "O" or "0"
+- Points: filled circles (#0875BE emphasis, #25374B regular), labels offset from point
+- Lines: standard stroke connecting points. Curves: polylines (3px) with 100-200 samples
+- Multiple functions: #25374B first, #0875BE second. Add legend if needed
 
 ### Geometric Shapes
-- Shape outlines: standard stroke (3px, #25374B, round join)
-- Regular 2D shapes (triangles, quadrilaterals, polygons): **NO fill by default** (`fill="none"`). Only fill with teal (#ACE3D9) when the description explicitly mentions shading, area calculation, or filled regions.
-- Vertex labels: capital letters, bold, 16px, #25374B — positioned outside the shape, offset from vertex
-- Side length annotations: 16px, #25374B — at midpoint of each edge, offset outward. Use #0875BE for key/highlighted measurements.
-- Right angle markers: small square at 90° corners, labelling stroke (2px, #25374B)
-- Angle arcs: labelling stroke (2px, #25374B) small circular arcs near vertex with degree labels
-- Dashed lines for construction lines, altitudes, diagonals: 2px, #25374B, stroke-dasharray="3,6"
-- For transformations: show original (dashed) and image (solid) shapes with corresponding labels (A→A')
-- Compass directions or coordinate axes if needed for context
+- Outlines: standard stroke. **NO fill by default** (`fill="none"`) — only teal fill when shading explicitly requested
+- Vertex labels: capital letters, bold, 16px, positioned outside shape
+- Side lengths: 16px at midpoint of edge, offset outward. #0875BE for highlighted measurements
+- Right angle markers: small square, labelling stroke. Angle arcs: labelling stroke with degree labels
+- Dashed lines for construction/altitudes: stroke-dasharray="3,6"
+- Transformations: original (dashed) and image (solid) with labels (A→A')
 
 ### Bar Charts
-- Vertical bars by default (horizontal if specified)
-- Bars: filled with teal (#ACE3D9), outlined with standard stroke (3px, #25374B)
-- Bars evenly spaced with gaps between them (~30% of bar width)
-- Category labels: 16px, #25374B, centred below each bar
-- Value axis: standard stroke (3px) with labelling stroke (2px) tick marks. Triangle arrowheads.
-- Optional value labels on top of each bar (16px, #25374B)
-- Multiple categories: cycle through #ACE3D9, #0875BE (at 30% opacity), #E5E6E8
-- Axis labels: 16px, #5E6D7F (gray for axis titles)
-- Title above the chart if provided (bold, #25374B)
+- Vertical by default. Bars: teal fill, standard stroke outline, evenly spaced (~30% gaps)
+- Category labels: 16px centred below. Value axis: standard stroke, labelling stroke ticks, triangle arrowheads
+- Value labels on top of bars. Multiple categories: cycle #ACE3D9, #0875BE (30% opacity), #E5E6E8
+- Axis titles: 16px #5E6D7F. Chart title: bold #25374B
 
 ### Pie Charts
-- Circle centred in the SVG, outlined with standard stroke (3px, #25374B)
-- Slices: cycle through #ACE3D9 (teal), #0875BE (blue), #25374B (dark), #E5E6E8 (light gray)
-- Slice divider lines: standard stroke (3px, #25374B)
-- Labels: 16px, #25374B — category name + percentage, positioned outside with a thin leader line (2px)
-- Small slices (< 5%): label outside with leader line to avoid overlap
-- Optional title above (bold, #25374B)
+- Circle centred, standard stroke outline. Slices: cycle #ACE3D9, #0875BE, #25374B, #E5E6E8
+- Divider lines: standard stroke. Labels outside with leader line (2px). Small slices (< 5%): always outside
 
 ### Fraction Diagrams
-- Fraction bars: rectangular bars divided into equal parts, outlined with standard stroke (3px, #25374B)
-- Shaded portions: teal (#ACE3D9), unshaded: white (#FFFFFF)
-- Area models: rectangles divided into grid cells — cell borders at labelling stroke (2px, #25374B), outer border at standard stroke (3px)
-- Circle fractions: circles with standard stroke (3px, #25374B), sector dividers at 2px
-- Always label the fraction (e.g., "3/4") near the diagram (16px, #25374B)
-- Clear borders between subdivisions
+- Bars/rectangles divided into equal parts: standard stroke outline, labelling stroke internal borders
+- Shaded: teal, unshaded: white. Circle fractions: standard stroke, 2px sector dividers
+- Label the fraction near the diagram
 
 ## Quality Rules
 
@@ -156,27 +130,12 @@ User: "A number line from 0 to 10 with points at 3 and 7"
   <!-- Triangle arrow tips -->
   <polygon points="240,60 233,55 233,65" fill="#25374B"/>
   <polygon points="20,60 27,55 27,65" fill="#25374B"/>
-  <!-- Ticks (labelling stroke 2px) and labels -->
+  <!-- Ticks (labelling stroke 2px) and labels — one per integer, evenly spaced -->
   <line x1="30" y1="52" x2="30" y2="68" stroke="#25374B" stroke-width="2" stroke-linecap="round"/>
   <text x="30" y="84" text-anchor="middle" font-family="Proxima Nova, Arial, Helvetica, sans-serif" font-size="16" fill="#25374B">0</text>
   <line x1="51" y1="52" x2="51" y2="68" stroke="#25374B" stroke-width="2" stroke-linecap="round"/>
   <text x="51" y="84" text-anchor="middle" font-family="Proxima Nova, Arial, Helvetica, sans-serif" font-size="16" fill="#25374B">1</text>
-  <line x1="72" y1="52" x2="72" y2="68" stroke="#25374B" stroke-width="2" stroke-linecap="round"/>
-  <text x="72" y="84" text-anchor="middle" font-family="Proxima Nova, Arial, Helvetica, sans-serif" font-size="16" fill="#25374B">2</text>
-  <line x1="93" y1="52" x2="93" y2="68" stroke="#25374B" stroke-width="2" stroke-linecap="round"/>
-  <text x="93" y="84" text-anchor="middle" font-family="Proxima Nova, Arial, Helvetica, sans-serif" font-size="16" fill="#25374B">3</text>
-  <line x1="114" y1="52" x2="114" y2="68" stroke="#25374B" stroke-width="2" stroke-linecap="round"/>
-  <text x="114" y="84" text-anchor="middle" font-family="Proxima Nova, Arial, Helvetica, sans-serif" font-size="16" fill="#25374B">4</text>
-  <line x1="135" y1="52" x2="135" y2="68" stroke="#25374B" stroke-width="2" stroke-linecap="round"/>
-  <text x="135" y="84" text-anchor="middle" font-family="Proxima Nova, Arial, Helvetica, sans-serif" font-size="16" fill="#25374B">5</text>
-  <line x1="156" y1="52" x2="156" y2="68" stroke="#25374B" stroke-width="2" stroke-linecap="round"/>
-  <text x="156" y="84" text-anchor="middle" font-family="Proxima Nova, Arial, Helvetica, sans-serif" font-size="16" fill="#25374B">6</text>
-  <line x1="177" y1="52" x2="177" y2="68" stroke="#25374B" stroke-width="2" stroke-linecap="round"/>
-  <text x="177" y="84" text-anchor="middle" font-family="Proxima Nova, Arial, Helvetica, sans-serif" font-size="16" fill="#25374B">7</text>
-  <line x1="198" y1="52" x2="198" y2="68" stroke="#25374B" stroke-width="2" stroke-linecap="round"/>
-  <text x="198" y="84" text-anchor="middle" font-family="Proxima Nova, Arial, Helvetica, sans-serif" font-size="16" fill="#25374B">8</text>
-  <line x1="219" y1="52" x2="219" y2="68" stroke="#25374B" stroke-width="2" stroke-linecap="round"/>
-  <text x="219" y="84" text-anchor="middle" font-family="Proxima Nova, Arial, Helvetica, sans-serif" font-size="16" fill="#25374B">9</text>
+  <!-- ... ticks 2-9 follow the same pattern at x=72, 93, 114, 135, 156, 177, 198, 219 ... -->
   <line x1="240" y1="52" x2="240" y2="68" stroke="#25374B" stroke-width="2" stroke-linecap="round"/>
   <text x="240" y="84" text-anchor="middle" font-family="Proxima Nova, Arial, Helvetica, sans-serif" font-size="16" fill="#25374B">10</text>
   <!-- Marked points (highlighted with blue #0875BE) -->

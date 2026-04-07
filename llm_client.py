@@ -33,10 +33,20 @@ class LLMClient:
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
+        system_message = {
+            "role": "system",
+            "content": [
+                {
+                    "type": "text",
+                    "text": system_prompt,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ],
+        }
         payload = {
             "model": model,
             "messages": [
-                {"role": "system", "content": system_prompt},
+                system_message,
                 {"role": "user", "content": user_prompt},
             ],
             "temperature": temperature,
@@ -95,10 +105,20 @@ class LLMClient:
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
+        system_message = {
+            "role": "system",
+            "content": [
+                {
+                    "type": "text",
+                    "text": system_prompt,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ],
+        }
         payload = {
             "model": model,
             "messages": [
-                {"role": "system", "content": system_prompt},
+                system_message,
                 {
                     "role": "user",
                     "content": [

@@ -12,6 +12,7 @@ Opens at http://localhost:5000 (or a public ngrok URL with --share)
 import io
 import json
 import sys
+import threading
 import time
 import uuid
 import zipfile
@@ -43,12 +44,12 @@ app.config["TEMPLATES_AUTO_RELOAD"] = True
 # ---------------------------------------------------------------------------
 config: ImageGenConfig = None
 client: LLMClient = None
+_upload_results = {}  # upload_id -> {"status": "pending"|"done"|"error", ...}
+_upload_lock = threading.Lock()
 
 
 def _init():
     global config, client
-    if config is not None:
-        return  # already initialized
     config = ImageGenConfig()
     if not config.api_key:
         print("ERROR: OPENROUTER_API_KEY not set in .env")
@@ -57,10 +58,6 @@ def _init():
     config.ensure_output_dir()
     print(f"Model: {config.model}")
     print(f"Upload: {'imgbb' if config.imgbb_api_key else 'imgur' if config.imgur_client_id else 'NONE (set IMGBB_API_KEY)'}")
-
-
-# Initialize on import so gunicorn workers pick it up
-_init()
 
 
 # ---------------------------------------------------------------------------
@@ -113,27 +110,52 @@ def api_generate():
         "elapsed": round(elapsed, 1),
     }
 
-    # Upload if requested and key available
+    # Return SVG immediately; upload in background if requested
+    result["draft_image"] = format_draft_image(svg_string, metadata, w, h)
+
     if do_upload and config.has_upload_key:
-        try:
-            upload_result = upload_svg(
-                svg_content=svg_string,
-                width=w,
-                height=h,
-                title=metadata.get("title", "Maths Diagram"),
-                description=metadata.get("accessibility_description", ""),
-                png_bytes=cached_png,
-            )
-            hosted_url = upload_result["url"]
-            result["hosted_url"] = hosted_url
-            result["draft_image"] = format_draft_image_url(hosted_url, metadata, w, h)
-        except Exception as e:
-            result["upload_error"] = str(e)
-            result["draft_image"] = format_draft_image(svg_string, metadata, w, h)
-    else:
-        result["draft_image"] = format_draft_image(svg_string, metadata, w, h)
+        upload_id = uuid.uuid4().hex[:8]
+        result["upload_id"] = upload_id
+        with _upload_lock:
+            _upload_results[upload_id] = {"status": "pending"}
+
+        def _bg_upload(uid, svg, width, height, meta, png):
+            try:
+                ur = upload_svg(
+                    svg_content=svg, width=width, height=height,
+                    title=meta.get("title", ""),
+                    description=meta.get("accessibility_description", ""),
+                    png_bytes=png,
+                )
+                with _upload_lock:
+                    _upload_results[uid] = {
+                        "status": "done",
+                        "hosted_url": ur["url"],
+                        "draft_image": format_draft_image_url(ur["url"], meta, width, height),
+                    }
+            except Exception as e:
+                with _upload_lock:
+                    _upload_results[uid] = {"status": "error", "error": str(e)}
+
+        threading.Thread(
+            target=_bg_upload,
+            args=(upload_id, svg_string, w, h, metadata, cached_png),
+            daemon=True,
+        ).start()
 
     return jsonify(result)
+
+
+@app.route("/api/upload-status/<upload_id>")
+def api_upload_status(upload_id):
+    """Poll for background upload result."""
+    with _upload_lock:
+        entry = _upload_results.get(upload_id)
+        if entry and entry["status"] != "pending":
+            _upload_results.pop(upload_id, None)
+    if entry is None:
+        return jsonify({"status": "unknown"}), 404
+    return jsonify(entry)
 
 
 @app.route("/api/batch", methods=["POST"])

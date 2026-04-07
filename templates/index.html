@@ -679,7 +679,7 @@
   });
 
   // --------------- Constants ---------------
-  const SINGLE_ESTIMATE_SECONDS = 15;
+  const SINGLE_ESTIMATE_SECONDS = 75;
 
   // --------------- Loading overlay (single mode) with timer + ETA ---------------
   let singleTimerInterval = null;
@@ -835,6 +835,42 @@
       </div>`;
   }
 
+  // --------------- Background upload polling ---------------
+  function pollUploadStatus(uploadId, index) {
+    const maxAttempts = 15; // 30s at 2s intervals
+    let attempts = 0;
+    const interval = setInterval(async () => {
+      attempts++;
+      try {
+        const resp = await fetch(`/api/upload-status/${uploadId}`);
+        const entry = await resp.json();
+        if (entry.status === 'done') {
+          clearInterval(interval);
+          // Update draft_image text
+          const draftEl = document.getElementById(`draft-${index}`);
+          if (draftEl && entry.draft_image) draftEl.textContent = entry.draft_image;
+          // Add URL row
+          const card = document.getElementById(`result-card-${index}`);
+          if (card && entry.hosted_url) {
+            const urlRow = card.querySelector('.url-row');
+            if (!urlRow) {
+              const metaRow = card.querySelector('.meta-row');
+              if (metaRow) metaRow.insertAdjacentHTML('beforebegin',
+                `<div class="url-row"><strong>URL:</strong> <a href="${entry.hosted_url}" target="_blank">${entry.hosted_url}</a></div>`);
+            }
+          }
+          // Update stored data
+          if (resultStore[index]) {
+            resultStore[index].hosted_url = entry.hosted_url;
+            resultStore[index].draft_image = entry.draft_image;
+          }
+        } else if (entry.status === 'error' || attempts >= maxAttempts) {
+          clearInterval(interval);
+        }
+      } catch { clearInterval(interval); }
+    }, 2000);
+  }
+
   // --------------- Manual retry ---------------
   async function retryGeneration(index) {
     const stored = resultStore[index];
@@ -952,6 +988,8 @@
         upload: document.getElementById('single-upload').checked,
       };
       document.getElementById('single-result').innerHTML = renderResultCard(data, 0);
+      // Start polling for background upload
+      if (data.upload_id) pollUploadStatus(data.upload_id, 0);
     } catch (e) {
       document.getElementById('single-error').innerHTML =
         `<div class="error-msg">Network error: ${escapeHtml(e.message)}</div>`;
@@ -1112,6 +1150,7 @@
           if (data.hosted_url) uploadedCount++;
           // Append result card immediately
           resultsContainer.innerHTML += renderResultCard(data, i);
+          if (data.upload_id) pollUploadStatus(data.upload_id, i);
 
           // Show retry info briefly if validation took multiple attempts
           const vAttempts = data.metadata?.validation?.attempts || 1;

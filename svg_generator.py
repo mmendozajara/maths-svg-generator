@@ -37,10 +37,25 @@ def _extract_svg_and_metadata(response: str) -> tuple[str, dict]:
     Returns (svg_string, metadata_dict).
     Raises ValueError if extraction fails.
     """
-    # Extract SVG block
-    svg_match = re.search(r"```svg\s*\n(.*?)```", response, re.DOTALL)
+    # Extract SVG block — try various code fence formats, then bare <svg> tag
+    svg_match = re.search(r"```(?:svg|xml|html)?\s*\n(.*?)```", response, re.DOTALL)
+    if svg_match:
+        # Verify the fenced block actually contains an <svg> tag
+        inner = svg_match.group(1)
+        if not re.search(r"<svg\b", inner):
+            svg_match = None
     if not svg_match:
         svg_match = re.search(r"(<svg\b.*?</svg>)", response, re.DOTALL)
+    if not svg_match:
+        # Last resort: response may be truncated (no closing </svg> or ```)
+        # Check if it starts with a code fence containing <svg
+        trunc_match = re.search(r"```(?:svg|xml|html)?\s*\n(<svg\b.*)", response, re.DOTALL)
+        if trunc_match:
+            # Try to close the SVG tag so we get a partial diagram
+            partial = trunc_match.group(1).strip().rstrip("`").strip()
+            if "</svg>" not in partial:
+                partial += "</svg>"
+            svg_match = re.search(r"(<svg\b.*</svg>)", partial, re.DOTALL)
     if not svg_match:
         raise ValueError("No SVG code found in LLM response")
 
