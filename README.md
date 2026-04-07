@@ -9,8 +9,8 @@ Type a description like _"A number line from 0 to 10 with 3 and 7 marked"_ and g
 1. A production-ready **SVG** matching your Figma colour palette and typography
 2. A **PNG** uploaded to image hosting (imgbb)
 3. A ready-to-paste **`<DraftImage>`** JSX snippet with the HTTPS URL
-4. **Image validation** via vision LLM — auto-retries if cutoff or mathematically incorrect
-5. **Manual retry** on result cards that still have issues after auto-retries
+4. **Image validation** via vision LLM — checks cutoff, accuracy, and mathematical consistency
+5. **Manual retry** — if validation flags issues, user sees them and decides whether to retry
 6. **JSX file processing** — upload a JSX file with `image-coming-soon.svg` placeholders and get back the same file with generated `<DraftImage>` replacements
 
 ```jsx
@@ -99,7 +99,7 @@ The web UI at `http://localhost:5000` has three tabs:
 ### Single Tab
 - Type a description, set dimensions, generate one diagram
 - Toggle upload on/off (off = `url="upload this image first"` placeholder)
-- **Manual retry** — click the orange Retry button on cards with validation issues to regenerate with fix instructions
+- **Manual retry** — click the orange Retry button on cards with validation issues to regenerate with fix instructions (no auto-retry — user decides)
 
 ### Batch Tab
 - **File upload** — drag-and-drop a `.txt` file (one description per line)
@@ -185,22 +185,29 @@ Every generated diagram is automatically validated by a vision LLM that checks:
 1. **Cutoff / Clipping** — no text, lines, or shapes cut off at image edges
 2. **Mathematical Accuracy** — curve shapes, values, labels, and proportions match the description
 
-If validation fails, the tool automatically regenerates with fix instructions (up to 3 retries). The validation status is shown:
-- **Web UI** — green/red/yellow badge on each result card + retry count; orange Retry button on cards with remaining issues
-- **CLI** — `Validation: PASSED` or `Validation: ISSUES REMAIN` with details
+If validation finds issues, the result is shown with the issues listed. The user can then click the **Retry** button to regenerate with fix instructions. There is no auto-retry — this keeps generation fast and gives the user control.
+
+The validation status is shown:
+- **Web UI** — green/red/yellow badge on each result card; orange Retry button on cards with issues
+- **CLI** — `Validation: PASSED` or `Validation: ISSUES FOUND` with details
 
 Configure in `default.yaml`:
 ```yaml
 models:
+  svg_generator: google/gemini-3.1-pro-preview-20260219
   image_validator: anthropic/claude-sonnet-4-5
 llm:
-  image_validation_retries: 3    # max retries (4 total attempts)
+  max_tokens: 32768
+  image_validation_retries: 0    # 0 = validate once, no auto-retry
 ```
 
 ## Performance Optimisations
 
 - **Persistent Chromium browser** — a single headless Chromium instance is launched once and reused for all SVG-to-PNG renders, avoiding ~3-5s cold-start overhead per render
 - **PNG reuse** — the PNG rendered during validation is passed directly to the upload step, eliminating a redundant re-render
+- **Parallel upload** — SVG is returned to the frontend immediately; PNG upload to imgbb runs in a background thread. Frontend polls `/api/upload-status/<id>` for the hosted URL
+- **Prompt caching** — system prompt uses `cache_control: {"type": "ephemeral"}` for OpenRouter caching (~75% savings on cached reads)
+- **No auto-retry** — validation runs once and shows issues to the user instead of silently doubling generation time with auto-regeneration
 
 ## Figma Style Sync
 
@@ -249,25 +256,25 @@ Description --> LLM (Claude) --> SVG --> Validate XML
                                   SVG --> PNG (persistent Chromium)
                                               |
                                        Vision LLM Validation
+                                       (cutoff + accuracy +
+                                        math consistency)
                                               |
-                                   If FAIL: regenerate with
-                                   fix instructions (up to 3x)
+                                   If issues: show to user
+                                   with Retry button
                                               |
-                                   If issues remain: manual Retry
-                                   button in web UI
-                                              |
-                                   PNG (reused) --> imgbb --> HTTPS URL
+                                   PNG upload (background thread)
+                                   --> imgbb --> HTTPS URL
                                               |
                                         <DraftImage> JSX snippet
 ```
 
-1. **System prompt** is loaded from `prompts/svg_system.md` and populated with Figma styling constants
-2. **LLM** (Claude Sonnet 4.5 via OpenRouter) generates the SVG + metadata
+1. **System prompt** is loaded from `prompts/svg_system.md` and populated with Figma styling constants (cached via `cache_control`)
+2. **LLM** (Gemini 3.1 Pro via OpenRouter) generates the SVG + metadata. This is a thinking model (~30-60s)
 3. **XML validation** checks the SVG is well-formed; retries on parse errors
 4. **Chromium** (persistent headless instance via Playwright) renders the SVG to a crisp 2x PNG
-5. **Vision validation** checks for cutoff/clipping and mathematical accuracy; auto-retries with fix instructions
-6. **Manual retry** — if issues remain after auto-retries, users can click Retry to regenerate with the validation issues as fix instructions
-7. **imgbb** hosts the PNG (reused from validation, no re-render) and returns an HTTPS URL
+5. **Vision validation** (Sonnet 4.5) checks for cutoff/clipping, mathematical accuracy, and mathematical consistency (e.g., Pythagoras check on right triangles)
+6. **Result shown** — SVG returned immediately to frontend with validation status. If issues found, user sees them + a Retry button
+7. **Background upload** — PNG upload to imgbb runs in a daemon thread; frontend polls for the hosted URL
 8. **DraftImage** JSX snippet is formatted with the URL and accessibility description
 
 ## Configuration
@@ -276,12 +283,12 @@ Edit `project-configs/default.yaml`:
 
 ```yaml
 models:
-  svg_generator: anthropic/claude-sonnet-4-5    # LLM model for SVG generation
-  image_validator: anthropic/claude-sonnet-4-5  # Vision model for validation
+  svg_generator: google/gemini-3.1-pro-preview-20260219  # Thinking model for SVG generation
+  image_validator: anthropic/claude-sonnet-4-5            # Vision model for validation
 llm:
   temperature: 0.2            # Lower = more consistent
-  max_tokens: 8192            # Max response length
-  image_validation_retries: 3 # Auto-retry on validation failure
+  max_tokens: 32768           # Must be high — Gemini 3.1 Pro uses ~7000+ thinking tokens internally
+  image_validation_retries: 0 # 0 = validate once, no auto-retry (user clicks Retry if needed)
 defaults:
   width: 260                  # Default SVG dimensions
   height: 260
@@ -298,16 +305,11 @@ styling:
 
 ## Deployment & Sharing
 
-### Option 1: Railway (recommended for teams)
+### Option 1: Render (current deployment)
 
-Deploy with Docker for a permanent URL that stays up 24/7:
+Live at: **https://maths-svg-generator.onrender.com/**
 
-1. Sign in at [railway.app](https://railway.app/) with GitHub
-2. **New Project** → **Deploy from GitHub repo**
-3. Add environment variables: `OPENROUTER_API_KEY`, `IMGBB_API_KEY`
-4. Railway auto-detects the Dockerfile and deploys → permanent URL
-
-Cost: ~$5/month on the Hobby plan.
+Auto-deploys from the [maths-svg-generator](https://github.com/mmendozajara/maths-svg-generator) GitHub repo on push.
 
 ### Option 2: ngrok (quick sharing)
 

@@ -4,47 +4,21 @@
 
 Just open the URL in your browser — no setup needed:
 
-> **Ask Jara for the current deployment URL**
+> **https://maths-svg-generator.onrender.com/**
 
 ---
 
-## Option B: Deploy to Render (recommended for teams)
+## Option B: Render (current team deployment)
 
-Render gives you a permanent URL that stays up 24/7 — no need to keep your laptop running.
+The app is deployed on Render and auto-deploys from GitHub on push:
 
-### One-time setup (admin only)
+> **https://maths-svg-generator.onrender.com/**
 
-1. Go to [render.com](https://render.com/) and sign in with GitHub
-2. Click **New** → **Web Service** → connect the `maths-svg-generator` repo
-3. Render auto-detects the Dockerfile — accept the defaults
-4. Choose the **Starter** plan ($7/month) — needed for Playwright/Chromium memory
-5. Add environment variables in the Render dashboard:
-   ```
-   OPENROUTER_API_KEY=sk-or-v1-your-key-here
-   IMGBB_API_KEY=your-key-here
-   ```
-6. Click **Deploy**. You'll get a permanent URL like `https://maths-svg-generator.onrender.com`
-
-**Cost:** ~$7/month on the Starter plan.
-
-### Updating
-
-Push to GitHub → Render auto-redeploys. That's it.
+To update: push to the [maths-svg-generator](https://github.com/mmendozajara/maths-svg-generator) GitHub repo → Render auto-redeploys.
 
 ---
 
-## Option C: Deploy to Railway (alternative)
-
-1. Go to [railway.app](https://railway.app/) and sign in with GitHub
-2. Click **New Project** → **Deploy from GitHub repo**
-3. Add environment variables: `OPENROUTER_API_KEY`, `IMGBB_API_KEY`
-4. Railway auto-detects the Dockerfile and deploys
-
-**Cost:** ~$5/month on the Hobby plan.
-
----
-
-## Option D: Run with Docker
+## Option C: Run with Docker
 
 If you have Docker installed, you can run it without installing Python or Playwright:
 
@@ -61,7 +35,7 @@ Open **http://localhost:8080** in your browser.
 
 ---
 
-## Option E: Run locally on your own machine
+## Option D: Run locally on your own machine
 
 ### Prerequisites
 
@@ -151,5 +125,5 @@ Open **http://localhost:5000** in your browser. That's it!
 | API key error | Check that `.env` is in the project root |
 | Port 5000 in use | Run `python app.py --port 5001` to use a different port |
 | SVGs look wrong | Try a more specific description — include colours, labels, and positions |
-| Render deploy fails | Use the Starter plan ($7/month) — the free tier doesn't have enough memory for Playwright/Chromium |
-| Validation too slow | This is normal — each retry cycle involves LLM generation + PNG render + vision check. The persistent browser and PNG reuse optimisations are already applied |
+| Generation takes 30-90s | This is normal — Gemini 3.1 Pro is a thinking model that uses internal reasoning tokens. The persistent browser, prompt caching, and parallel upload optimisations are already applied |
+| Validation issues shown | No auto-retry — click the orange Retry button if the diagram needs fixing |
