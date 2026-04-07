@@ -49,9 +49,9 @@ You MUST only use these colours. Do NOT invent or use any other colour values:
 - **Grid (#E5E6E8)** — Grid lines only.
 
 ### Font Rules
-- **Words and labels**: `font-family="Proxima Nova, Arial, Helvetica, sans-serif"` — size 16px, weight normal, colour #25374B. Use for axis titles, category labels, captions, and any non-numeric text.
-- **All numbers and math** (digits, measurements, coordinates, axis values, variables): `font-family="KaTeX_Main, Times, serif"` — size 16px, colour #25374B. Use font-style italic for variables (x, y, a, b) only; numbers are upright (normal style). **Exception**: when a number is part of a word label (e.g., "Box 1", "Step 2", "Group A1"), keep the entire label in Proxima Nova — do not split fonts within a single label.
-- **Bold text**: Same font as the element type, `font-weight="bold"` — use for heading labels and vertex labels only
+- **Words and numbers**: `font-family="Proxima Nova, Arial, Helvetica, sans-serif"` — size 16px, weight normal, colour #25374B
+- **Math variables** (x, y, a, b, etc.): `font-family="KaTeX_Main, Times, serif"` — size 16px, font-style italic, colour #25374B
+- **Bold text**: Same font, `font-weight="bold"` — use for heading labels and vertex labels only
 - **Minimum readable size**: 11px (use for minor tick labels if space is tight)
 - Line height: 16
 
@@ -132,17 +132,17 @@ User: "A number line from 0 to 10 with points at 3 and 7"
   <polygon points="20,60 27,55 27,65" fill="#25374B"/>
   <!-- Ticks (labelling stroke 2px) and labels — one per integer, evenly spaced -->
   <line x1="30" y1="52" x2="30" y2="68" stroke="#25374B" stroke-width="2" stroke-linecap="round"/>
-  <text x="30" y="84" text-anchor="middle" font-family="KaTeX_Main, Times, serif" font-size="16" fill="#25374B">0</text>
+  <text x="30" y="84" text-anchor="middle" font-family="Proxima Nova, Arial, Helvetica, sans-serif" font-size="16" fill="#25374B">0</text>
   <line x1="51" y1="52" x2="51" y2="68" stroke="#25374B" stroke-width="2" stroke-linecap="round"/>
-  <text x="51" y="84" text-anchor="middle" font-family="KaTeX_Main, Times, serif" font-size="16" fill="#25374B">1</text>
+  <text x="51" y="84" text-anchor="middle" font-family="Proxima Nova, Arial, Helvetica, sans-serif" font-size="16" fill="#25374B">1</text>
   <!-- ... ticks 2-9 follow the same pattern at x=72, 93, 114, 135, 156, 177, 198, 219 ... -->
   <line x1="240" y1="52" x2="240" y2="68" stroke="#25374B" stroke-width="2" stroke-linecap="round"/>
-  <text x="240" y="84" text-anchor="middle" font-family="KaTeX_Main, Times, serif" font-size="16" fill="#25374B">10</text>
+  <text x="240" y="84" text-anchor="middle" font-family="Proxima Nova, Arial, Helvetica, sans-serif" font-size="16" fill="#25374B">10</text>
   <!-- Marked points (highlighted with blue #0875BE) -->
   <circle cx="93" cy="40" r="4" fill="#0875BE"/>
-  <text x="93" y="30" text-anchor="middle" font-family="KaTeX_Main, Times, serif" font-size="16" fill="#0875BE" font-weight="bold">3</text>
+  <text x="93" y="30" text-anchor="middle" font-family="Proxima Nova, Arial, Helvetica, sans-serif" font-size="16" fill="#0875BE" font-weight="bold">3</text>
   <circle cx="177" cy="40" r="4" fill="#0875BE"/>
-  <text x="177" y="30" text-anchor="middle" font-family="KaTeX_Main, Times, serif" font-size="16" fill="#0875BE" font-weight="bold">7</text>
+  <text x="177" y="30" text-anchor="middle" font-family="Proxima Nova, Arial, Helvetica, sans-serif" font-size="16" fill="#0875BE" font-weight="bold">7</text>
 </svg>
 ```
 
@@ -171,9 +171,9 @@ User: "A right triangle with sides 3, 4, 5 and the right angle marked"
   <text x="30" y="238" text-anchor="middle" font-family="Proxima Nova, Arial, Helvetica, sans-serif" font-size="16" fill="#25374B" font-weight="bold">B</text>
   <text x="215" y="238" text-anchor="middle" font-family="Proxima Nova, Arial, Helvetica, sans-serif" font-size="16" fill="#25374B" font-weight="bold">C</text>
   <!-- Side length labels (#25374B for regular, #0875BE for hypotenuse highlight) -->
-  <text x="22" y="145" text-anchor="middle" font-family="KaTeX_Main, Times, serif" font-size="16" fill="#25374B">3</text>
-  <text x="120" y="244" text-anchor="middle" font-family="KaTeX_Main, Times, serif" font-size="16" fill="#25374B">4</text>
-  <text x="130" y="130" text-anchor="middle" font-family="KaTeX_Main, Times, serif" font-size="16" fill="#0875BE" font-weight="bold">5</text>
+  <text x="22" y="145" text-anchor="middle" font-family="Proxima Nova, Arial, Helvetica, sans-serif" font-size="16" fill="#25374B">3</text>
+  <text x="120" y="244" text-anchor="middle" font-family="Proxima Nova, Arial, Helvetica, sans-serif" font-size="16" fill="#25374B">4</text>
+  <text x="130" y="130" text-anchor="middle" font-family="Proxima Nova, Arial, Helvetica, sans-serif" font-size="16" fill="#0875BE" font-weight="bold">5</text>
 </svg>
 ```
 
