@@ -50,6 +50,8 @@ _upload_lock = threading.Lock()
 
 def _init():
     global config, client
+    if config is not None:
+        return  # already initialized
     config = ImageGenConfig()
     if not config.api_key:
         print("ERROR: OPENROUTER_API_KEY not set in .env")
@@ -58,6 +60,10 @@ def _init():
     config.ensure_output_dir()
     print(f"Model: {config.model}")
     print(f"Upload: {'imgbb' if config.imgbb_api_key else 'imgur' if config.imgur_client_id else 'NONE (set IMGBB_API_KEY)'}")
+
+
+# Initialize on import so gunicorn workers pick it up
+_init()
 
 
 # ---------------------------------------------------------------------------
