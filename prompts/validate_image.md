@@ -40,6 +40,7 @@ This is the most critical check. Compare the rendered image against the original
 - Angles must be visually correct (right angles must look like 90 degrees)
 - Side lengths and proportions must be reasonable for the values given
 - Labels must be on the correct elements
+- **Mathematical consistency**: Verify that numeric values in the diagram are consistent with each other and with the stated properties. For example: if a triangle is labelled right-angled with sides 5, 10, 12, check Pythagoras (5²+10²=125 ≠ 144=12²) — this is invalid and must FAIL. Similarly check: do angles in a triangle sum to 180°? Do pie chart percentages sum to 100%? Are bar chart values proportional to bar heights?
 
 ### Scale and proportion
 - Axis scales must be consistent (equal spacing between equal intervals)
