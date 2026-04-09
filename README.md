@@ -1,17 +1,18 @@
 # Maths SVG Generator
 
-Generate mathematical diagrams as SVG from natural language descriptions, styled with your Figma design tokens.
+Generate mathematical diagrams as SVG from natural language descriptions, with optional Figma design token styling.
 
 ## What It Does
 
 Type a description like _"A number line from 0 to 10 with 3 and 7 marked"_ and get back:
 
-1. A production-ready **SVG** matching your Figma colour palette and typography
-2. A **PNG** uploaded to image hosting (imgbb)
+1. A production-ready **SVG** — optionally matching your Figma colour palette and typography, or clean generic styling
+2. A **PNG** uploaded to image hosting (imgbb) with live upload status indicators
 3. A ready-to-paste **`<DraftImage>`** JSX snippet with the HTTPS URL
-4. **Image validation** via vision LLM — checks cutoff, accuracy, and mathematical consistency
+4. **Image validation** via vision LLM — checks cutoff, accuracy, and mathematical consistency (automatic or on-demand via Validate button)
 5. **Manual retry** — if validation flags issues, user sees them and decides whether to retry
-6. **JSX file processing** — upload a JSX file with `image-coming-soon.svg` placeholders and get back the same file with generated `<DraftImage>` replacements
+6. **Download SVG** — direct download link on every result card
+7. **JSX file processing** — upload a JSX file with `image-coming-soon.svg` placeholders and get back the same file with generated `<DraftImage>` replacements
 
 ```jsx
 <DraftImage
@@ -98,7 +99,11 @@ The web UI at `http://localhost:5000` has three tabs:
 
 ### Single Tab
 - Type a description, set dimensions, generate one diagram
+- **Figma styling toggle** — check "Use Figma Styling" to apply brand colours/fonts, or leave unchecked for clean generic styling (default: off)
 - Toggle upload on/off (off = `url="upload this image first"` placeholder)
+- **Upload status indicator** — shows uploading/uploaded/error state on each result card
+- **Validate button** — manually trigger vision validation on any result (useful when auto-validation is skipped)
+- **Download SVG** — direct download link on every result card
 - **Manual retry** — click the orange Retry button on cards with validation issues to regenerate with fix instructions (no auto-retry — user decides)
 
 ### Batch Tab
@@ -180,15 +185,17 @@ python generate.py --jsx lesson_content.jsx --upload --output processed/
 
 ## Image Validation
 
-Every generated diagram is automatically validated by a vision LLM that checks:
+Every generated diagram can be validated by a vision LLM that checks:
 
 1. **Cutoff / Clipping** — no text, lines, or shapes cut off at image edges
 2. **Mathematical Accuracy** — curve shapes, values, labels, and proportions match the description
 
+Validation runs automatically when `image_validation_retries` > 0. When set to 0 (default), validation is skipped during generation but can be triggered manually via the **Validate** button on any result card.
+
 If validation finds issues, the result is shown with the issues listed. The user can then click the **Retry** button to regenerate with fix instructions. There is no auto-retry — this keeps generation fast and gives the user control.
 
 The validation status is shown:
-- **Web UI** — green/red/yellow badge on each result card; orange Retry button on cards with issues
+- **Web UI** — green/red/yellow badge on each result card; orange Retry button on cards with issues; blue Validate button when validation was skipped
 - **CLI** — `Validation: PASSED` or `Validation: ISSUES FOUND` with details
 
 Configure in `default.yaml`:
@@ -203,6 +210,7 @@ llm:
 
 ## Performance Optimisations
 
+- **Thinking budget control** — Gemini 3.1 Pro's internal reasoning can be disabled (default), capped at a token budget, or left uncapped. Disabled is fastest (~30-40s) with minimal quality loss
 - **Persistent Chromium browser** — a single headless Chromium instance is launched once and reused for all SVG-to-PNG renders, avoiding ~3-5s cold-start overhead per render
 - **PNG reuse** — the PNG rendered during validation is passed directly to the upload step, eliminating a redundant re-render
 - **Parallel upload** — SVG is returned to the frontend immediately; PNG upload to imgbb runs in a background thread. Frontend polls `/api/upload-status/<id>` for the hosted URL
@@ -223,22 +231,24 @@ This updates `project-configs/default.yaml` so all generated SVGs match your des
 
 ```
 Image generator/
-  app.py                   # Flask web server + REST API
+  app.py                   # Flask web server + REST API (incl. /api/validate endpoint)
   generate.py              # CLI entry point (single + batch + JSX processing)
   svg_generator.py         # LLM SVG generation + image validation loop
   validate_image.py        # Vision LLM image validation
   jsx_embed.py             # DraftImage JSX formatter + placeholder parser
   upload_imgur.py           # SVG -> PNG -> imgbb/Imgur upload (persistent browser)
   sync_figma_styles.py      # Figma REST API -> YAML style sync
-  config.py                # YAML + env config loader
-  llm_client.py            # Thread-safe OpenRouter API client (text + vision)
+  config.py                # YAML + env config loader (incl. style guide selection)
+  llm_client.py            # Thread-safe OpenRouter API client (text + vision + thinking budget)
   Dockerfile               # Production container (Chromium + gunicorn)
   .env.example             # Template for required environment variables
   SETUP.md                 # Setup guide for coworkers
   project-configs/
-    default.yaml            # Colours, fonts, model, dimensions
+    default.yaml            # Colours, fonts, model, dimensions, thinking budget
   prompts/
-    svg_system.md           # LLM system prompt with diagram guidelines
+    svg_system.md           # LLM system prompt template ({{STYLING}} + {{STYLE_GUIDE}} placeholders)
+    style_guide_figma.md    # Figma brand style guide (colours, fonts, strokes, examples)
+    style_guide_generic.md  # Clean generic style guide (no hardcoded brand values)
     validate_image.md       # Vision validation prompt (cutoff + accuracy)
   templates/
     index.html              # Web UI (single + batch + JSX processor tabs)
@@ -268,13 +278,13 @@ Description --> LLM (Claude) --> SVG --> Validate XML
                                         <DraftImage> JSX snippet
 ```
 
-1. **System prompt** is loaded from `prompts/svg_system.md` and populated with Figma styling constants (cached via `cache_control`)
-2. **LLM** (Gemini 3.1 Pro via OpenRouter) generates the SVG + metadata. This is a thinking model (~30-60s)
+1. **System prompt** is loaded from `prompts/svg_system.md` and populated with styling constants — either Figma brand tokens or generic clean defaults, based on the "Use Figma Styling" toggle (cached via `cache_control`)
+2. **LLM** (Gemini 3.1 Pro via OpenRouter) generates the SVG + metadata. Thinking budget is configurable (disabled by default for speed)
 3. **XML validation** checks the SVG is well-formed; retries on parse errors
 4. **Chromium** (persistent headless instance via Playwright) renders the SVG to a crisp 2x PNG
-5. **Vision validation** (Sonnet 4.5) checks for cutoff/clipping, mathematical accuracy, and mathematical consistency (e.g., Pythagoras check on right triangles)
-6. **Result shown** — SVG returned immediately to frontend with validation status. If issues found, user sees them + a Retry button
-7. **Background upload** — PNG upload to imgbb runs in a daemon thread; frontend polls for the hosted URL
+5. **Vision validation** (Sonnet 4.5) checks for cutoff/clipping, mathematical accuracy, and mathematical consistency (e.g., Pythagoras check on right triangles). Can also be triggered manually via the Validate button
+6. **Result shown** — SVG returned immediately to frontend with validation status, download link, and upload indicator. If issues found, user sees them + a Retry button
+7. **Background upload** — PNG upload to imgbb runs in a daemon thread; frontend polls for the hosted URL with live status indicator
 8. **DraftImage** JSX snippet is formatted with the URL and accessibility description
 
 ## Configuration
@@ -288,11 +298,12 @@ models:
 llm:
   temperature: 0.2            # Lower = more consistent
   max_tokens: 32768           # Must be high — Gemini 3.1 Pro uses ~7000+ thinking tokens internally
+  thinking_budget: 0          # 0 = disabled (fastest), positive int = cap, omit/null = uncapped
   image_validation_retries: 0 # 0 = validate once, no auto-retry (user clicks Retry if needed)
 defaults:
   width: 260                  # Default SVG dimensions
   height: 260
-styling:
+styling:                       # Used when "Use Figma Styling" is checked (off by default)
   primary_color: '#25374B'    # Cloudburst — main text, strokes, labels
   secondary_color: '#0875BE'  # Blue — headings, highlights, accent lines
   fill_color: '#ACE3D9'       # Teal — shaded regions, filled areas

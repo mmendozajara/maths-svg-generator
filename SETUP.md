@@ -98,14 +98,17 @@ Open **http://localhost:5000** in your browser. That's it!
 ## Quick Usage
 
 1. Type a description like: `A number line from 0 to 10 with 3 and 7 marked`
-2. Click **Generate**
-3. Copy the `<DraftImage>` code or download the SVG
-4. If there are validation issues, click the orange **Retry** button to regenerate with fixes
+2. Optionally check **Use Figma Styling** to apply brand colours/fonts (off by default for cleaner, faster output)
+3. Click **Generate**
+4. Copy the `<DraftImage>` code, click **Download SVG**, or wait for the upload to complete (status shown on the card)
+5. Click the **Validate** button to run vision validation on any result
+6. If there are validation issues, click the orange **Retry** button to regenerate with fixes
 
 ### Batch mode
 
 - Switch to the **Batch** tab
 - Upload a `.txt` file (one description per line) or type multiple descriptions
+- Optionally check **Use Figma Styling**
 - Click **Generate All**
 - Download results as ZIP or copy all codes at once
 
@@ -114,6 +117,7 @@ Open **http://localhost:5000** in your browser. That's it!
 - Switch to the **JSX Processor** tab
 - Upload a `.jsx` file containing placeholder `<DraftImage>` or `<Image>` tags with `image-coming-soon.svg` paths
 - Review the detected placeholders — edit descriptions or dimensions if needed
+- Optionally check **Use Figma Styling**
 - Click **Generate All** to process each placeholder sequentially
 - Click **Download Modified JSX** to get the file with all placeholders replaced
 
@@ -125,5 +129,7 @@ Open **http://localhost:5000** in your browser. That's it!
 | API key error | Check that `.env` is in the project root |
 | Port 5000 in use | Run `python app.py --port 5001` to use a different port |
 | SVGs look wrong | Try a more specific description — include colours, labels, and positions |
-| Generation takes 30-90s | This is normal — Gemini 3.1 Pro is a thinking model that uses internal reasoning tokens. The persistent browser, prompt caching, and parallel upload optimisations are already applied |
+| Generation takes 30-90s | This is normal — Gemini 3.1 Pro is a thinking model. With thinking disabled (default), generation is ~30-40s. The persistent browser, prompt caching, and parallel upload optimisations are already applied |
 | Validation issues shown | No auto-retry — click the orange Retry button if the diagram needs fixing |
+| No Validate button | Validate button appears when auto-validation is skipped (the default). Click it to run vision validation on-demand |
+| Upload status not showing | Check that the Upload checkbox is ticked. The upload indicator shows on each card while the background upload completes |

@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-LLM-powered tool that generates mathematical diagrams as SVG from natural language descriptions. Outputs production-ready `<DraftImage>` JSX snippets with hosted HTTPS URLs. Styled with Figma design tokens, validated by vision LLM.
+LLM-powered tool that generates mathematical diagrams as SVG from natural language descriptions. Outputs production-ready `<DraftImage>` JSX snippets with hosted HTTPS URLs. Optional Figma design token styling (off by default), validated by vision LLM.
 
 **Stack:** Python, Flask, Playwright (headless Chromium), OpenRouter API (Gemini 3.1 Pro + Claude Sonnet 4.5), imgbb image hosting.
 
@@ -17,28 +17,30 @@ Description → LLM (SVG generation) → XML validation → PNG render (Chromium
 
 | File | Purpose |
 |------|---------|
-| `app.py` | Flask web server with REST API. 3 tabs: Single, Batch, JSX Processor. `--share` flag for ngrok |
+| `app.py` | Flask web server with REST API. 3 tabs: Single, Batch, JSX Processor. `/api/validate` for on-demand validation. `--share` flag for ngrok |
 | `generate.py` | CLI entry point. Modes: single description, `--batch` (TXT/JSON), `--jsx` (JSX file processing) |
-| `svg_generator.py` | LLM SVG generation + XML validation + image validation loop. Returns cached PNG bytes |
+| `svg_generator.py` | LLM SVG generation + XML validation + image validation loop. Supports Figma/generic style guide toggle. Returns cached PNG bytes |
 | `validate_image.py` | Vision LLM — checks cutoff/clipping + mathematical accuracy |
 | `jsx_embed.py` | `format_draft_image()` / `format_draft_image_url()` for JSX output. `parse_jsx_placeholders()` + `apply_jsx_replacements()` for JSX file processing |
 | `upload_imgur.py` | SVG→PNG via persistent Chromium + upload to imgbb/Imgur. Thread-safe via `threading.local()` |
-| `llm_client.py` | Thread-safe OpenRouter API client (text + vision). `threading.Lock` on usage counters. Prompt caching via `cache_control` |
-| `config.py` | YAML config + `.env` loader |
+| `llm_client.py` | Thread-safe OpenRouter API client (text + vision + thinking budget control). `threading.Lock` on usage counters. Prompt caching via `cache_control` |
+| `config.py` | YAML config + `.env` loader. `get_styling_block()` + `get_style_guide_block()` for conditional Figma/generic styling |
 | `sync_figma_styles.py` | Pulls design tokens from Figma REST API → updates `default.yaml` |
 
 ### Prompts
 
 | File | Purpose |
 |------|---------|
-| `prompts/svg_system.md` | System prompt with Figma style guide, per-diagram-type guidelines, quality rules, examples |
+| `prompts/svg_system.md` | System prompt template with `{{STYLING}}` + `{{STYLE_GUIDE}}` placeholders |
+| `prompts/style_guide_figma.md` | Figma brand style guide — colours, fonts, strokes, 2 SVG examples |
+| `prompts/style_guide_generic.md` | Clean generic style guide — no hardcoded brand values |
 | `prompts/validate_image.md` | Vision validation prompt — cutoff detection + math accuracy checks |
 
 ### Config
 
 | File | Purpose |
 |------|---------|
-| `project-configs/default.yaml` | Models, LLM settings, default dimensions, Figma colour palette, stroke rules, font rules |
+| `project-configs/default.yaml` | Models, LLM settings (incl. `thinking_budget: 0`), default dimensions, Figma colour palette, stroke rules, font rules |
 | `.env` | API keys: `OPENROUTER_API_KEY`, `IMGBB_API_KEY`, `NGROK_AUTH_TOKEN` (optional), `FIGMA_API_TOKEN` (optional) |
 
 ## Figma Design Tokens (Current)
@@ -69,11 +71,17 @@ The PNG rendered during validation is cached in `metadata["_png_bytes"]` and pas
 ### JSX Placeholder Processing
 `jsx_embed.py` finds `<DraftImage>` or `<Image>` tags with `image-coming-soon.svg` in path/url/src. Extracts `accessibilityDescription` as the generation prompt. Replacements applied in reverse position order to avoid offset drift.
 
+### Figma Styling Toggle
+`svg_generator.py` calls `config.get_styling_block(use_figma)` and `config.get_style_guide_block(use_figma)` to conditionally load brand or generic styling. The web UI has a "Use Figma Styling" checkbox (unchecked by default) in all 3 tabs.
+
+### Thinking Budget
+`llm_client.py` supports `thinking_budget` parameter: `0` = disabled (default, fastest), positive int = cap, `None` = uncapped. Set in `default.yaml` under `llm.thinking_budget`.
+
 ### Image Validation (No Auto-Retry)
-`svg_generator.py` generates SVG then validates once via vision LLM (cutoff/clipping, mathematical accuracy, mathematical consistency). No auto-retry — if validation fails, the user sees issues and a Retry button. Manual retry sends fix instructions back to the generator.
+`svg_generator.py` generates SVG then optionally validates via vision LLM (cutoff/clipping, mathematical accuracy, mathematical consistency). With `image_validation_retries: 0` (default), auto-validation is skipped but users can click the **Validate** button on any result card. Manual retry sends fix instructions back to the generator.
 
 ### Parallel Upload
-`app.py` returns the SVG immediately to the frontend. PNG upload to imgbb runs in a background daemon thread. The frontend polls `/api/upload-status/<upload_id>` every 2s to get the hosted URL when ready.
+`app.py` returns the SVG immediately to the frontend. PNG upload to imgbb runs in a background daemon thread. The frontend polls `/api/upload-status/<upload_id>` every 2s to get the hosted URL when ready. Upload status indicators show uploading/uploaded/error state on each card.
 
 ### Prompt Caching
 `llm_client.py` uses `cache_control: {"type": "ephemeral"}` on system prompt content blocks for OpenRouter prompt caching (~75% savings on cached reads).
@@ -83,8 +91,11 @@ The PNG rendered during validation is cached in `metadata["_png_bytes"]` and pas
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `/` | GET | Web UI |
-| `/api/generate` | POST | Generate single SVG from description |
+| `/api/generate` | POST | Generate single SVG. Accepts `use_figma_styling` (default: false) |
+| `/api/validate` | POST | On-demand vision validation. Body: `{svg, description, width, height}` |
 | `/api/upload-status/<id>` | GET | Poll background upload status |
+| `/api/batch` | POST | Batch generate multiple SVGs |
+| `/api/batch/download` | POST | Download batch results as ZIP |
 | `/api/jsx/parse` | POST | Parse JSX file, return placeholder list |
 | `/api/jsx/build` | POST | Apply replacements to JSX, return modified file |
 
@@ -103,7 +114,7 @@ Number lines, coordinate graphs, geometry (triangles, angles, polygons), bar cha
 
 | Role | Model | Notes |
 |------|-------|-------|
-| SVG Generator | `google/gemini-3.1-pro-preview-20260219` | Thinking model — uses internal reasoning tokens counting against max_tokens. Needs max_tokens=32768 |
+| SVG Generator | `google/gemini-3.1-pro-preview-20260219` | Thinking model — thinking disabled by default (`thinking_budget: 0`). Needs max_tokens=32768 |
 | Image Validator | `anthropic/claude-sonnet-4-5` | Vision model — fewer false positives than Flash/Haiku |
 
 ## Known Issues / Gotchas
