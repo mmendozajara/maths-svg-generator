@@ -68,6 +68,9 @@ def _init():
     print(f"Upload: {'imgbb' if config.imgbb_api_key else 'imgur' if config.imgur_client_id else 'NONE (set IMGBB_API_KEY)'}")
 
 
+# Module-level init for gunicorn workers (they don't run __main__)
+_init()
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
