@@ -21,13 +21,13 @@ from upload_imgur import svg_to_png
 from validate_image import validate_image
 
 
-def _load_system_prompt(config) -> str:
+def _load_system_prompt(config, use_figma_styling: bool = True) -> str:
     """Load and populate the system prompt with styling constants."""
     with open(config.prompt_path, "r", encoding="utf-8") as f:
         prompt = f.read()
 
-    styling_block = config.get_styling_block()
-    prompt = prompt.replace("{{STYLING}}", styling_block)
+    prompt = prompt.replace("{{STYLING}}", config.get_styling_block(use_figma_styling))
+    prompt = prompt.replace("{{STYLE_GUIDE}}", config.get_style_guide_block(use_figma_styling))
     return prompt
 
 
@@ -117,6 +117,7 @@ def _generate_with_xml_retry(
         user_prompt=user_prompt,
         temperature=config.temperature,
         max_tokens=config.max_tokens,
+        thinking_budget=config.thinking_budget,
     )
 
     svg_string, metadata = _extract_svg_and_metadata(response)
@@ -140,6 +141,7 @@ def _generate_with_xml_retry(
             user_prompt=retry_prompt,
             temperature=config.temperature,
             max_tokens=config.max_tokens,
+            thinking_budget=config.thinking_budget,
         )
         svg_string, metadata = _extract_svg_and_metadata(response)
         is_valid, error = _validate_svg_xml(svg_string)
@@ -160,6 +162,7 @@ def generate_svg(
     width: int = None,
     height: int = None,
     initial_fix_instructions: str = "",
+    use_figma_styling: bool = True,
 ) -> tuple[str, dict]:
     """Generate an SVG diagram with image validation.
 
@@ -191,7 +194,7 @@ def generate_svg(
     w = width or config.default_width
     h = height or config.default_height
 
-    system_prompt = _load_system_prompt(config)
+    system_prompt = _load_system_prompt(config, use_figma_styling)
 
     # --- Attempt 1: generate SVG ---
     svg_string, metadata = _generate_with_xml_retry(

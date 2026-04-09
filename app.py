@@ -50,8 +50,6 @@ _upload_lock = threading.Lock()
 
 def _init():
     global config, client
-    if config is not None:
-        return  # already initialized
     config = ImageGenConfig()
     if not config.api_key:
         print("ERROR: OPENROUTER_API_KEY not set in .env")
@@ -60,10 +58,6 @@ def _init():
     config.ensure_output_dir()
     print(f"Model: {config.model}")
     print(f"Upload: {'imgbb' if config.imgbb_api_key else 'imgur' if config.imgur_client_id else 'NONE (set IMGBB_API_KEY)'}")
-
-
-# Initialize on import so gunicorn workers pick it up
-_init()
 
 
 # ---------------------------------------------------------------------------
@@ -87,12 +81,14 @@ def api_generate():
     do_upload = data.get("upload", True)
     name = data.get("name", "")
     fix_instructions = data.get("fix_instructions", "")
+    use_figma = data.get("use_figma_styling", True)
 
     start = time.time()
     try:
         svg_string, metadata = generate_svg(
             client, desc, config, w, h,
             initial_fix_instructions=fix_instructions,
+            use_figma_styling=use_figma,
         )
     except (RuntimeError, ValueError) as e:
         return jsonify({"error": str(e)}), 500

@@ -509,6 +509,11 @@
         <label for="single-upload">Upload and generate DraftImage with HTTPS URL</label>
       </div>
 
+      <div class="checkbox-row">
+        <input type="checkbox" id="single-figma">
+        <label for="single-figma">Use Figma styling (brand colours & fonts)</label>
+      </div>
+
       <div class="btn-row">
         <button class="btn btn-primary" id="btn-generate" onclick="generateSingle()">Generate SVG</button>
       </div>
@@ -550,6 +555,11 @@
       <div class="checkbox-row">
         <input type="checkbox" id="batch-upload" checked>
         <label for="batch-upload">Upload all and generate DraftImages with HTTPS URLs</label>
+      </div>
+
+      <div class="checkbox-row">
+        <input type="checkbox" id="batch-figma">
+        <label for="batch-figma">Use Figma styling (brand colours & fonts)</label>
       </div>
 
       <div class="btn-row">
@@ -621,6 +631,11 @@
         <div class="checkbox-row">
           <input type="checkbox" id="jsx-upload" checked>
           <label for="jsx-upload">Upload and generate DraftImages with HTTPS URLs</label>
+        </div>
+
+        <div class="checkbox-row">
+          <input type="checkbox" id="jsx-figma">
+          <label for="jsx-figma">Use Figma styling (brand colours & fonts)</label>
         </div>
 
         <div class="btn-row">
@@ -919,6 +934,7 @@
           width: req.width || 260,
           height: req.height || 260,
           upload: req.upload !== undefined ? req.upload : true,
+          use_figma_styling: req.use_figma_styling !== undefined ? req.use_figma_styling : true,
           fix_instructions: fixInstructions,
         }),
       });
@@ -969,6 +985,7 @@
           width: parseInt(document.getElementById('single-width').value) || 260,
           height: parseInt(document.getElementById('single-height').value) || 260,
           upload: document.getElementById('single-upload').checked,
+          use_figma_styling: document.getElementById('single-figma').checked,
         }),
       });
 
@@ -986,6 +1003,7 @@
         width: parseInt(document.getElementById('single-width').value) || 260,
         height: parseInt(document.getElementById('single-height').value) || 260,
         upload: document.getElementById('single-upload').checked,
+        use_figma_styling: document.getElementById('single-figma').checked,
       };
       document.getElementById('single-result').innerHTML = renderResultCard(data, 0);
       // Start polling for background upload
@@ -1085,6 +1103,7 @@
     document.getElementById('batch-results').innerHTML = '';
 
     const doUpload = document.getElementById('batch-upload').checked;
+    const useFigma = document.getElementById('batch-figma').checked;
     const w = parseInt(document.getElementById('batch-width').value) || 260;
     const h = parseInt(document.getElementById('batch-height').value) || 260;
 
@@ -1129,6 +1148,7 @@
             width: w,
             height: h,
             upload: doUpload,
+            use_figma_styling: useFigma,
           }),
         });
 
@@ -1144,7 +1164,7 @@
           data.index = i;
           data.description = desc;
           data.status = 'ok';
-          data._request = { name: item.name || '', width: w, height: h, upload: doUpload };
+          data._request = { name: item.name || '', width: w, height: h, upload: doUpload, use_figma_styling: useFigma };
           results.push(data);
           okCount++;
           if (data.hosted_url) uploadedCount++;
@@ -1361,6 +1381,7 @@
     document.getElementById('jsx-results').innerHTML = '';
 
     const doUpload = document.getElementById('jsx-upload').checked;
+    const useFigma = document.getElementById('jsx-figma').checked;
     const wOverride = parseInt(document.getElementById('jsx-width').value) || 260;
     const hOverride = parseInt(document.getElementById('jsx-height').value) || 260;
     const total = jsxPlaceholders.length;
@@ -1414,7 +1435,7 @@
         const resp = await fetch('/api/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ description: desc, width: w, height: h, upload: doUpload }),
+          body: JSON.stringify({ description: desc, width: w, height: h, upload: doUpload, use_figma_styling: useFigma }),
         });
 
         if (jsxCancelled) break;
@@ -1426,7 +1447,7 @@
         } else {
           okCount++;
           data.description = desc;
-          data._request = { width: w, height: h, upload: doUpload };
+          data._request = { width: w, height: h, upload: doUpload, use_figma_styling: useFigma };
           resultsContainer.innerHTML += renderResultCard(data, 1000 + i);
 
           // Build replacement entry

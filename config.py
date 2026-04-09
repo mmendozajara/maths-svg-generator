@@ -13,8 +13,7 @@ class ImageGenConfig:
     def __init__(self, config_path: str = None):
         self.base_dir = Path(__file__).parent
 
-        # Load .env (check project root first, then parent for shared setups)
-        load_dotenv(self.base_dir / ".env")
+        # Load .env from parent directory (shared across projects)
         load_dotenv(self.base_dir.parent / ".env")
 
         if config_path is None:
@@ -38,6 +37,7 @@ class ImageGenConfig:
         self.max_retries = llm.get("max_retries", 2)
         self.validation_retries = llm.get("validation_retries", 1)
         self.image_validation_retries = llm.get("image_validation_retries", 3)
+        self.thinking_budget = llm.get("thinking_budget", None)
 
         # Validation prompt path
         self.validation_prompt_path = self.base_dir / "prompts" / "validate_image.md"
@@ -50,8 +50,10 @@ class ImageGenConfig:
         # Styling
         self.styling = raw.get("styling", {})
 
-        # Prompt path
+        # Prompt paths
         self.prompt_path = self.base_dir / "prompts" / "svg_system.md"
+        self.style_guide_figma_path = self.base_dir / "prompts" / "style_guide_figma.md"
+        self.style_guide_generic_path = self.base_dir / "prompts" / "style_guide_generic.md"
 
         # Output
         self.output_dir = self.base_dir / "output"
@@ -70,10 +72,18 @@ class ImageGenConfig:
         """Create output directory if it doesn't exist."""
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-    def get_styling_block(self) -> str:
+    def get_styling_block(self, use_figma: bool = True) -> str:
         """Format styling config as text for the system prompt."""
+        if not use_figma:
+            return ""
         lines = []
         for key, value in self.styling.items():
             label = key.replace("_", " ").title()
             lines.append(f"- {label}: {value}")
         return "\n".join(lines)
+
+    def get_style_guide_block(self, use_figma: bool = True) -> str:
+        """Load the appropriate style guide fragment."""
+        path = self.style_guide_figma_path if use_figma else self.style_guide_generic_path
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()

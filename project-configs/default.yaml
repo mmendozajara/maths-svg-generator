@@ -10,6 +10,7 @@ llm:
   max_retries: 2
   validation_retries: 1
   image_validation_retries: 0
+  thinking_budget: 0
 defaults:
   width: 260
   height: 260

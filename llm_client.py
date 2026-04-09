@@ -27,6 +27,7 @@ class LLMClient:
         user_prompt: str,
         temperature: float = 0.2,
         max_tokens: int = 4096,
+        thinking_budget: int = None,
     ) -> str:
         """Make an LLM call with retry logic. Returns the response text."""
         headers = {
@@ -52,6 +53,14 @@ class LLMClient:
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
+        if thinking_budget is not None:
+            if thinking_budget == 0:
+                payload["thinking"] = {"type": "disabled"}
+            else:
+                payload["thinking"] = {
+                    "type": "enabled",
+                    "budget_tokens": thinking_budget,
+                }
 
         last_error = None
         for attempt in range(self.max_retries + 1):
