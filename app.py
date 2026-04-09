@@ -37,7 +37,7 @@ except ImportError:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from utils.llm_client import LLMClient
 
-app = Flask(__name__, template_folder="templates", static_folder="output")
+app = Flask(__name__, template_folder="templates", static_folder="output", static_url_path="/output")
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 
 # ---------------------------------------------------------------------------
