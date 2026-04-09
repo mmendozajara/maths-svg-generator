@@ -404,6 +404,10 @@
     .btn-retry { background: var(--orange); color: white; padding: 6px 14px; font-size: 12px; }
     .btn-retry:hover { background: #e08a0b; }
     .btn-retry:disabled { background: var(--gray); color: #999; cursor: not-allowed; }
+    .btn-validate { background: var(--blue); color: white; padding: 6px 14px; font-size: 12px; }
+    .btn-validate:hover { background: #066aa8; }
+    .btn-validate:disabled { background: var(--gray); color: #999; cursor: not-allowed; }
+    .upload-status { font-size: 12px; color: var(--blue); margin-top: 6px; }
 
     /* Retry overlay on card */
     .retry-overlay {
@@ -820,11 +824,24 @@
       ? `<button class="btn btn-retry" id="retry-btn-${index}" onclick="retryGeneration(${index})">Retry</button>`
       : '';
 
+    // Show validate button if validation was skipped
+    const wasSkipped = v && v.status === 'skipped';
+    const validateBtn = wasSkipped
+      ? `<button class="btn btn-validate" id="validate-btn-${index}" onclick="manualValidate(${index})">Validate</button>`
+      : '';
+
+    // Upload status indicator
+    const uploadPending = data.upload_id && !url;
+    const uploadIndicator = uploadPending
+      ? `<div class="upload-status" id="upload-indicator-${index}">Uploading...</div>`
+      : '';
+
     return `
       <div class="result-card" id="result-card-${index}">
         <div class="result-header">
           <h3>${escapeHtml(title)}</h3>
           <div class="result-header-right">
+            ${validateBtn}
             ${retryBtn}
             ${validationBadge(data.metadata)}
             <span style="font-size:12px;color:#666">${type} &middot; ${data.elapsed || '?'}s</span>
@@ -839,10 +856,12 @@
                 <span id="draft-${index}">${escapeHtml(data.draft_image)}</span>
               </div>
               ${url ? `<div class="url-row"><strong>URL:</strong> <a href="${url}" target="_blank">${url}</a></div>` : ''}
+              ${uploadIndicator}
               ${data.upload_error ? `<div class="error-msg" style="margin-top:10px">Upload: ${escapeHtml(data.upload_error)}</div>` : ''}
               ${validationIssues(data.metadata)}
               <div class="meta-row">
                 <span>File: ${data.filename}</span>
+                <a href="/output/${data.filename}" download class="btn btn-download" style="margin-left:8px;text-decoration:none;">Download SVG</a>
               </div>
             </div>
           </div>
@@ -861,6 +880,9 @@
         const entry = await resp.json();
         if (entry.status === 'done') {
           clearInterval(interval);
+          // Remove upload indicator
+          const indicator = document.getElementById(`upload-indicator-${index}`);
+          if (indicator) indicator.remove();
           // Update draft_image text
           const draftEl = document.getElementById(`draft-${index}`);
           if (draftEl && entry.draft_image) draftEl.textContent = entry.draft_image;
@@ -879,8 +901,14 @@
             resultStore[index].hosted_url = entry.hosted_url;
             resultStore[index].draft_image = entry.draft_image;
           }
-        } else if (entry.status === 'error' || attempts >= maxAttempts) {
+        } else if (entry.status === 'error') {
           clearInterval(interval);
+          const indicator = document.getElementById(`upload-indicator-${index}`);
+          if (indicator) indicator.innerHTML = `<span style="color:var(--red)">Upload failed: ${escapeHtml(entry.error || 'Unknown error')}</span>`;
+        } else if (attempts >= maxAttempts) {
+          clearInterval(interval);
+          const indicator = document.getElementById(`upload-indicator-${index}`);
+          if (indicator) indicator.innerHTML = `<span style="color:var(--orange)">Upload timed out</span>`;
         }
       } catch { clearInterval(interval); }
     }, 2000);
@@ -960,6 +988,57 @@
       clearInterval(retryInterval);
       overlay.remove();
       alert(`Retry error: ${e.message}`);
+    }
+  }
+
+  // --------------- Manual validate ---------------
+  async function manualValidate(index) {
+    const stored = resultStore[index];
+    if (!stored) return;
+
+    const btn = document.getElementById(`validate-btn-${index}`);
+    if (btn) { btn.disabled = true; btn.textContent = 'Validating...'; }
+
+    const req = stored._request || {};
+
+    try {
+      const resp = await fetch('/api/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          svg: stored.svg,
+          description: stored.description || '',
+          width: req.width || 260,
+          height: req.height || 260,
+        }),
+      });
+
+      const result = await resp.json();
+
+      if (!resp.ok) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Validate'; }
+        alert(`Validation error: ${result.error || 'Unknown error'}`);
+        return;
+      }
+
+      // Update stored metadata with validation result
+      stored.metadata.validation = {
+        status: result.pass ? 'passed' : 'failed',
+        issues: result.issues || [],
+        fix_instructions: result.fix_instructions || '',
+        attempts: 1,
+      };
+
+      // Re-render the card
+      const card = document.getElementById(`result-card-${index}`);
+      if (card) {
+        const temp = document.createElement('div');
+        temp.innerHTML = renderResultCard(stored, index);
+        card.replaceWith(temp.firstElementChild);
+      }
+    } catch (e) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Validate'; }
+      alert(`Validation error: ${e.message}`);
     }
   }
 

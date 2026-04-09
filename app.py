@@ -22,6 +22,7 @@ from flask import Flask, render_template, request, jsonify, send_file
 
 from config import ImageGenConfig
 from svg_generator import generate_svg
+from validate_image import validate_image
 from jsx_embed import (
     format_draft_image,
     format_draft_image_url,
@@ -158,6 +159,34 @@ def api_upload_status(upload_id):
     if entry is None:
         return jsonify({"status": "unknown"}), 404
     return jsonify(entry)
+
+
+@app.route("/api/validate", methods=["POST"])
+def api_validate():
+    """Validate an already-generated SVG via vision model."""
+    data = request.get_json()
+    svg_string = data.get("svg", "").strip()
+    description = data.get("description", "").strip()
+    w = data.get("width", config.default_width)
+    h = data.get("height", config.default_height)
+
+    if not svg_string:
+        return jsonify({"error": "No SVG provided"}), 400
+    if not description:
+        return jsonify({"error": "No description provided"}), 400
+
+    try:
+        from upload_imgur import svg_to_png
+        png_bytes = svg_to_png(svg_string, w, h)
+    except Exception as e:
+        return jsonify({"error": f"PNG render failed: {e}"}), 500
+
+    try:
+        result = validate_image(client, png_bytes, description, config)
+    except Exception as e:
+        return jsonify({"error": f"Validation failed: {e}"}), 500
+
+    return jsonify(result)
 
 
 @app.route("/api/batch", methods=["POST"])
