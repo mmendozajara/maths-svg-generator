@@ -40,6 +40,13 @@ except ImportError:
 app = Flask(__name__, template_folder="templates", static_folder="output", static_url_path="/output")
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    """Return JSON for all errors so the frontend can parse them."""
+    code = getattr(e, "code", 500)
+    return jsonify({"error": str(e)}), code
+
 # ---------------------------------------------------------------------------
 # Globals — initialized on startup
 # ---------------------------------------------------------------------------
