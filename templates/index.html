@@ -1013,13 +1013,15 @@
         }),
       });
 
-      const result = await resp.json();
-
       if (!resp.ok) {
+        let msg = `Server returned ${resp.status}`;
+        try { const err = await resp.json(); msg = err.error || msg; } catch {}
         if (btn) { btn.disabled = false; btn.textContent = 'Validate'; }
-        alert(`Validation error: ${result.error || 'Unknown error'}`);
+        alert(`Validation error: ${msg}`);
         return;
       }
+
+      const result = await resp.json();
 
       // Update stored metadata with validation result
       stored.metadata.validation = {
