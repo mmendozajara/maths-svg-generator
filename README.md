@@ -155,6 +155,7 @@ Options:
   --jsx FILE               Path to a JSX file — finds placeholder images and generates replacements
   --folder DIR             Path to a folder of JSX files — scans all files for placeholders
   --output DIR             Output directory for modified JSX/folder output (default: same as input)
+  --figma                  Apply Figma brand styling (colours, fonts, strokes). Default: generic
   --config FILE            Path to custom YAML config
   --dry-run                Print SVG without saving
 ```

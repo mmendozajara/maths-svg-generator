@@ -28,6 +28,11 @@ Usage:
     python generate.py --folder lessons/ --upload
     python generate.py --folder lessons/ --upload --output processed/
 
+    # Apply Figma brand styling
+    python generate.py "A right triangle" --figma --upload
+    python generate.py --jsx input.jsx --upload --figma
+    python generate.py --folder lessons/ --upload --figma
+
     # Dry run (print LLM response, don't save)
     python generate.py "A bar chart of pets: dogs 5, cats 3" --dry-run
 
@@ -129,6 +134,7 @@ def _generate_single(
     height: int = None,
     dry_run: bool = False,
     upload: bool = False,
+    use_figma: bool = False,
 ) -> dict | None:
     """Generate a single SVG from a description.
 
@@ -143,7 +149,7 @@ def _generate_single(
 
     start = time.time()
     try:
-        svg_string, metadata = generate_svg(client, description, config, w, h)
+        svg_string, metadata = generate_svg(client, description, config, w, h, use_figma_styling=use_figma)
     except (RuntimeError, ValueError) as e:
         print(f"  FAILED: {e}")
         return None
@@ -298,6 +304,7 @@ def _run_batch(
     height: int = None,
     dry_run: bool = False,
     upload: bool = False,
+    use_figma: bool = False,
 ) -> list[dict]:
     """Run batch generation from a TXT or JSON file."""
     requests_data = _parse_batch_file(batch_path)
@@ -332,7 +339,7 @@ def _run_batch(
             continue
 
         print(f"\n[{i}/{len(requests_data)}]")
-        result = _generate_single(client, desc, config, name, w, h, dry_run, upload)
+        result = _generate_single(client, desc, config, name, w, h, dry_run, upload, use_figma)
         if result:
             results.append(result)
 
@@ -348,6 +355,7 @@ def _run_jsx(
     config: ImageGenConfig,
     upload: bool = False,
     output_dir: str = None,
+    use_figma: bool = False,
 ) -> dict:
     """Process a JSX file — find placeholder images, generate SVGs, output modified JSX.
 
@@ -413,7 +421,7 @@ def _run_jsx(
 
         start = time.time()
         try:
-            svg_string, metadata = generate_svg(client, desc, config, w, h)
+            svg_string, metadata = generate_svg(client, desc, config, w, h, use_figma_styling=use_figma)
         except (RuntimeError, ValueError) as e:
             print(f"    FAILED: {e}")
             failed += 1
@@ -521,6 +529,7 @@ def _run_folder(
     config: ImageGenConfig,
     upload: bool = False,
     output_dir: str = None,
+    use_figma: bool = False,
 ) -> dict:
     """Process a folder of JSX files — find placeholders in each, generate SVGs, output modified files.
 
@@ -636,7 +645,7 @@ def _run_folder(
 
             start = time.time()
             try:
-                svg_string, metadata = generate_svg(client, desc, config, w, h)
+                svg_string, metadata = generate_svg(client, desc, config, w, h, use_figma_styling=use_figma)
             except (RuntimeError, ValueError) as e:
                 print(f"    FAILED: {e}")
                 total_failed += 1
@@ -787,6 +796,11 @@ def main():
         help="Upload to image host and use HTTPS URL in DraftImage (requires IMGBB_API_KEY in .env)",
     )
     parser.add_argument(
+        "--figma",
+        action="store_true",
+        help="Apply Figma brand styling (colours, fonts, strokes). Default is clean generic styling",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print SVG and metadata without saving to disk",
@@ -818,12 +832,14 @@ def main():
     if args.upload:
         host = "imgbb" if config.imgbb_api_key else "imgur"
         print(f"Upload: {host} (HTTPS URLs)")
+    if args.figma:
+        print(f"Styling: Figma brand")
 
     start_time = time.time()
 
     if args.folder:
         # Folder processing mode
-        folder_result = _run_folder(client, args.folder, config, args.upload, args.output)
+        folder_result = _run_folder(client, args.folder, config, args.upload, args.output, args.figma)
 
         usage = client.get_usage_summary()
         print(f"  LLM calls: {usage['total_calls']}")
@@ -832,7 +848,7 @@ def main():
 
     if args.jsx:
         # JSX processing mode — has its own summary
-        jsx_result = _run_jsx(client, args.jsx, config, args.upload, args.output)
+        jsx_result = _run_jsx(client, args.jsx, config, args.upload, args.output, args.figma)
 
         # Print LLM usage
         usage = client.get_usage_summary()
@@ -842,12 +858,12 @@ def main():
 
     if args.batch:
         results = _run_batch(
-            client, args.batch, config, args.width, args.height, args.dry_run, args.upload
+            client, args.batch, config, args.width, args.height, args.dry_run, args.upload, args.figma
         )
     else:
         result = _generate_single(
             client, args.description, config, args.name, args.width, args.height,
-            args.dry_run, args.upload,
+            args.dry_run, args.upload, args.figma,
         )
         results = [result] if result else []
 
