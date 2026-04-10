@@ -681,6 +681,11 @@
         <label for="single-figma">Use Figma styling (brand colours & fonts)</label>
       </div>
 
+      <div class="checkbox-row">
+        <input type="checkbox" id="single-catalogue" checked>
+        <label for="single-catalogue">Search image catalogue first</label>
+      </div>
+
       <div class="btn-row">
         <button class="btn btn-primary" id="btn-generate" onclick="generateSingle()">Generate SVG</button>
       </div>
@@ -727,6 +732,11 @@
       <div class="checkbox-row">
         <input type="checkbox" id="batch-figma">
         <label for="batch-figma">Use Figma styling (brand colours & fonts)</label>
+      </div>
+
+      <div class="checkbox-row">
+        <input type="checkbox" id="batch-catalogue" checked>
+        <label for="batch-catalogue">Search image catalogue first</label>
       </div>
 
       <div class="btn-row">
@@ -805,6 +815,11 @@
           <label for="jsx-figma">Use Figma styling (brand colours & fonts)</label>
         </div>
 
+        <div class="checkbox-row">
+          <input type="checkbox" id="jsx-catalogue" checked>
+          <label for="jsx-catalogue">Search image catalogue first</label>
+        </div>
+
         <div class="btn-row">
           <button class="btn btn-primary" id="btn-jsx-generate" onclick="generateJsx()">Generate All Images</button>
           <button class="btn btn-secondary" onclick="clearJsx()">Clear</button>
@@ -881,6 +896,11 @@
         <div class="checkbox-row">
           <input type="checkbox" id="folder-figma">
           <label for="folder-figma">Use Figma styling (brand colours & fonts)</label>
+        </div>
+
+        <div class="checkbox-row">
+          <input type="checkbox" id="folder-catalogue" checked>
+          <label for="folder-catalogue">Search image catalogue first</label>
         </div>
 
         <div class="btn-row">
@@ -1459,10 +1479,11 @@
     const w = parseInt(document.getElementById('single-width').value) || 260;
     const h = parseInt(document.getElementById('single-height').value) || 260;
 
-    // Step 1: Search catalogue for existing image (skip if user forced generate)
+    // Step 1: Search catalogue for existing image (skip if user forced generate or catalogue disabled)
+    const useCatalogue = document.getElementById('single-catalogue').checked;
     if (_forceGenerate) {
       _forceGenerate = false;
-    } else {
+    } else if (useCatalogue) {
       btn.textContent = 'Searching catalogue...';
       const catalogueResult = await searchCatalogue(desc, w, h);
       if (catalogueResult) {
@@ -1607,6 +1628,7 @@
 
     const doUpload = document.getElementById('batch-upload').checked;
     const useFigma = document.getElementById('batch-figma').checked;
+    const useCatalogue = document.getElementById('batch-catalogue').checked;
     const w = parseInt(document.getElementById('batch-width').value) || 260;
     const h = parseInt(document.getElementById('batch-height').value) || 260;
 
@@ -1639,10 +1661,12 @@
         continue;
       }
 
-      updateBatchProgress(i, items.length, `Searching catalogue for #${i + 1}...`, Date.now() - startTime);
-
-      // Step 1: Search catalogue
-      const catalogueResult = await searchCatalogue(desc, w, h);
+      // Step 1: Search catalogue (if enabled)
+      let catalogueResult = null;
+      if (useCatalogue) {
+        updateBatchProgress(i, items.length, `Searching catalogue for #${i + 1}...`, Date.now() - startTime);
+        catalogueResult = await searchCatalogue(desc, w, h);
+      }
       if (catalogueResult) {
         // Use catalogue match
         const storeKey = `batch-${i}`;
@@ -1920,6 +1944,7 @@
 
     const doUpload = document.getElementById('jsx-upload').checked;
     const useFigma = document.getElementById('jsx-figma').checked;
+    const useCatalogue = document.getElementById('jsx-catalogue').checked;
     const wOverride = parseInt(document.getElementById('jsx-width').value) || 260;
     const hOverride = parseInt(document.getElementById('jsx-height').value) || 260;
     const total = jsxPlaceholders.length;
@@ -1968,10 +1993,13 @@
       const h = hOverride || p.height || 260;
 
       document.getElementById('jsx-pcount').textContent = `${i} / ${total}`;
-      document.getElementById('jsx-current').textContent = `Searching catalogue for #${i + 1}...`;
 
-      // Step 1: Search catalogue
-      const catalogueResult = await searchCatalogue(desc, w, h);
+      // Step 1: Search catalogue (if enabled)
+      let catalogueResult = null;
+      if (useCatalogue) {
+        document.getElementById('jsx-current').textContent = `Searching catalogue for #${i + 1}...`;
+        catalogueResult = await searchCatalogue(desc, w, h);
+      }
       if (catalogueResult) {
         okCount++;
         catalogueMatchCount++;
@@ -2308,6 +2336,7 @@
 
     const doUpload = document.getElementById('folder-upload').checked;
     const useFigma = document.getElementById('folder-figma').checked;
+    const useCatalogue = document.getElementById('folder-catalogue').checked;
     const wOverride = parseInt(document.getElementById('folder-width').value) || 260;
     const hOverride = parseInt(document.getElementById('folder-height').value) || 260;
 
@@ -2380,10 +2409,13 @@
         const h = hOverride || p.height || 260;
 
         document.getElementById('folder-pcount').textContent = `${globalIdx} / ${totalPlaceholders}`;
-        document.getElementById('folder-current').textContent = `Searching catalogue: ${fileEntry.filename} #${pi + 1}...`;
 
-        // Step 1: Search catalogue
-        const catalogueResult = await searchCatalogue(desc, w, h);
+        // Step 1: Search catalogue (if enabled)
+        let catalogueResult = null;
+        if (useCatalogue) {
+          document.getElementById('folder-current').textContent = `Searching catalogue: ${fileEntry.filename} #${pi + 1}...`;
+          catalogueResult = await searchCatalogue(desc, w, h);
+        }
         if (catalogueResult) {
           okCount++;
           catalogueMatchCount++;
