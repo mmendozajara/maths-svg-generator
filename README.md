@@ -95,6 +95,12 @@ python generate.py --jsx input.jsx --upload
 python generate.py --jsx input.jsx --upload --output output_dir/
 ```
 
+**CLI — folder processing:**
+```bash
+python generate.py --folder lessons/ --upload
+python generate.py --folder lessons/ --upload --output processed/
+```
+
 ## Web Interface
 
 The web UI at `http://localhost:5000` has four tabs:
