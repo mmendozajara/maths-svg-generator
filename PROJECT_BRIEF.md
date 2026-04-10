@@ -173,8 +173,8 @@ An LLM-powered tool that takes a plain English description and produces a ready-
 | Figma styling toggle | Check/uncheck "Use Figma Styling" per tab — applies brand colours/fonts or clean generic output (default: off) |
 | Catalogue search | Auto-checks 8,000+ existing images before generating; shows matches with original description and confidence score |
 | Batch generation | Upload .txt file or type manually, sequential processing with ETA, catalogue search |
-| JSX processing | Upload .jsx file with placeholder images, generate all, download modified JSX, catalogue search with JSX comments |
-| Folder processing | Upload folder of .jsx files, checkbox file selection, catalogue search, sequential processing |
+| JSX processing | Upload .jsx file with placeholder images, generate all, download modified JSX, catalogue search with JSX comments. Output: `{name}_with_images.jsx` in same directory or `--output` dir |
+| Folder processing | Upload folder of .jsx files, checkbox file selection, catalogue search, sequential processing. Output: `{folder}-generated/` sibling directory mirroring folder structure |
 | File upload zone | Drag-and-drop .txt files (batch) or .jsx files (JSX processor) |
 | Progress bar | Inline progress with live MM:SS timer, item counter, and ETA |
 | Cancel | Stop batch/JSX processing mid-way (completes current item gracefully) |
@@ -270,6 +270,15 @@ https://i.ibb.co/sv61FVtX/Number-line-0-10.jpg
   notesForImageCreator="A horizontal number line from 0 to 10 with filled green dots marking 3 and 7."
 />
 ```
+
+### Output file locations
+
+| Mode | Output location |
+|------|----------------|
+| **Single** | `output/{type}_{timestamp}.svg` in the project directory |
+| **Batch** | `output/{type}_{timestamp}.svg` per item |
+| **JSX (`--jsx`)** | `{original_name}_with_images.jsx` in same directory as input, or in `--output` directory |
+| **Folder (`--folder`)** | `{folder_name}-generated/` sibling directory (mirrors input folder structure). Files with placeholders get modified copies; files without are copied unchanged. Override with `--output` |
 
 ## Technology Stack
 

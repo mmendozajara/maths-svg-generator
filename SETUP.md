@@ -120,6 +120,7 @@ Open **http://localhost:5000** in your browser. That's it!
 - Optionally check **Use Figma Styling**
 - Click **Generate All** — catalogue matches are used automatically; a JSX comment with the original description is added for manual review
 - Click **Download Modified JSX** to get the file with all placeholders replaced
+- **Output:** `{original_name}_with_images.jsx` in the same directory
 
 ### Folder Processor mode
 
@@ -128,6 +129,7 @@ Open **http://localhost:5000** in your browser. That's it!
 - Review the file table — files without placeholders are hidden; uncheck files to exclude them
 - Click **Generate All** — processes all checked files, using catalogue matches where available
 - Download the modified JSX files with placeholders replaced
+- **Output:** `{folder_name}-generated/` directory created as a sibling of the input folder, mirroring the folder structure. Files without placeholders are copied unchanged
 
 ## Troubleshooting
 

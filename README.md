@@ -184,22 +184,44 @@ Lines starting with `#` are ignored. Optional `name | description` format for cu
 
 The `--jsx` flag accepts a JSX file and scans for `<DraftImage>` or `<Image>` tags containing `image-coming-soon.svg` in their `path`, `url`, or `src` attribute. For each placeholder found, the tool:
 
-1. Extracts the generation prompt from `accessibilityDescription`, `notesForImageCreator`, or `alt`
-2. Extracts dimensions from `width`/`height` attributes (defaults to 260x260)
-3. Generates an SVG for each placeholder
-4. Replaces the placeholder tag with a new `<DraftImage>` containing the hosted URL (if `--upload`) or a placeholder URL
-5. Writes the modified JSX to `{original_name}_with_images.jsx`
+1. Searches the image catalogue for an existing match (≥30% confidence)
+2. If no match, generates an SVG via LLM using `accessibilityDescription`, `notesForImageCreator`, or `alt` as the prompt
+3. Extracts dimensions from `width`/`height` attributes (defaults to 260x260)
+4. Replaces the placeholder tag with a new `<DraftImage>` (LLM-generated) or `<Image>` (catalogue match) tag
+5. Adds a `{/* Original description: ... */}` JSX comment before catalogue matches for manual review
+
+**Output:** Writes to `{original_name}_with_images.jsx` in the same directory as the input file, or in the `--output` directory if specified.
 
 ```bash
 # Process a JSX file and upload generated images
 python generate.py --jsx lesson_content.jsx --upload
+# Output: lesson_content_with_images.jsx (same directory)
 
 # Output to a specific directory
 python generate.py --jsx lesson_content.jsx --upload --output processed/
+# Output: processed/lesson_content_with_images.jsx
+```
 
-# Process an entire folder of JSX files
+### Folder processing
+
+The `--folder` flag scans all `.jsx` and `.mdx` files in a directory for placeholder images and processes them in bulk.
+
+1. Scans all JSX/MDX files in the folder recursively
+2. For each placeholder found, searches the catalogue first, then falls back to LLM generation
+3. Files with placeholders get modified copies with replacements applied
+4. Files without placeholders are copied unchanged to preserve folder structure
+5. Catalogue matches include a `{/* Original description: ... */}` JSX comment for manual review
+
+**Output:** Creates a `{folder_name}-generated/` sibling directory by default, or uses the `--output` directory if specified. The folder structure is mirrored.
+
+```bash
+# Process all JSX files in a folder
 python generate.py --folder lessons/ --upload
+# Output: lessons-generated/ (sibling of lessons/)
+
+# Output to a specific directory
 python generate.py --folder lessons/ --upload --output processed/
+# Output: processed/ (mirrors lessons/ structure)
 ```
 
 ## Image Validation
