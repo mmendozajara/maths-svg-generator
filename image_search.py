@@ -176,9 +176,24 @@ class ImageCatalogueSearch:
     }
 
     @classmethod
+    def _extract_numbers(cls, text: str) -> set[str]:
+        """Extract all numeric values (integers and decimals) from text."""
+        return set(re.findall(r'\d+\.?\d*', text))
+
+    @classmethod
     def _extract_keywords(cls, text: str) -> set[str]:
-        """Extract meaningful keywords from normalised text, filtering stop words."""
-        return {w for w in text.split() if w not in cls._STOP_WORDS and len(w) > 1}
+        """Extract meaningful keywords from normalised text, filtering stop words.
+        Keeps numbers (even single-digit) since they're critical for maths diagrams."""
+        words = set()
+        for w in text.split():
+            if w in cls._STOP_WORDS:
+                continue
+            # Keep numbers regardless of length (5, 10, 3.5 are all important)
+            if w.replace(".", "").replace("-", "").isdigit():
+                words.add(w)
+            elif len(w) > 1:
+                words.add(w)
+        return words
 
     @classmethod
     def _keyword_coverage(cls, query_norm: str, desc_norm: str) -> float:
@@ -194,6 +209,49 @@ class ImageCatalogueSearch:
         return matched / len(query_words)
 
     @classmethod
+    def _numeric_mismatch_penalty(cls, query_norm: str, desc_norm: str) -> float:
+        """Penalize when query and description have different numbers.
+
+        For maths diagrams, numbers are the most important differentiator.
+        "right triangle 5cm 10cm 12cm" vs "triangle 10cm 18cm 21cm" should
+        score very low because the measurements are different.
+
+        Returns 1.0 (no penalty) down to 0.3 (heavy penalty).
+        """
+        query_nums = cls._extract_numbers(query_norm)
+        desc_nums = cls._extract_numbers(desc_norm)
+
+        if not query_nums or not desc_nums:
+            return 1.0
+
+        # Numbers in query that are missing from description
+        missing = query_nums - desc_nums
+        # Numbers in description that are not in query
+        extra = desc_nums - query_nums
+
+        if not missing and not extra:
+            return 1.0  # Perfect number match
+
+        # What fraction of query numbers are missing?
+        missing_ratio = len(missing) / len(query_nums)
+
+        # What fraction of description numbers are extra/wrong?
+        extra_ratio = len(extra) / len(desc_nums) if desc_nums else 0
+
+        # Combined mismatch — worse when both missing and extra numbers exist
+        # (means the numbers are just different, not just missing some)
+        if missing and extra:
+            # Strong penalty — different measurements entirely
+            mismatch = max(missing_ratio, extra_ratio)
+            return max(0.3, 1.0 - 0.9 * mismatch)
+        elif missing:
+            # Query has numbers not in description
+            return max(0.5, 1.0 - 0.6 * missing_ratio)
+        else:
+            # Description has extra numbers (less severe — could be more detail)
+            return max(0.7, 1.0 - 0.3 * extra_ratio)
+
+    @classmethod
     def _extra_content_penalty(cls, query_norm: str, desc_norm: str) -> float:
         """Penalize when the match description introduces major new concepts not in the query.
 
@@ -203,20 +261,23 @@ class ImageCatalogueSearch:
         is fine because the extra terms are just details (labels), not new concepts.
 
         We check: of the description's keywords, what fraction are totally unrelated
-        to any query keyword? Single letters (labels like A, B, M, N) and numbers
-        are excluded since they're just specifics.
+        to any query keyword? Single letters (labels like A, B, M, N) are excluded
+        since they're just specifics. Numbers are handled by _numeric_mismatch_penalty.
         """
         query_words = cls._extract_keywords(query_norm)
         desc_words = cls._extract_keywords(desc_norm)
         if not desc_words or not query_words:
             return 1.0
 
-        # Ignore single-char labels and pure numbers in description
-        desc_content = {w for w in desc_words if len(w) > 1 and not w.replace(".", "").isdigit()}
+        # Ignore single-char labels and numbers (numbers handled separately)
+        desc_content = {w for w in desc_words if len(w) > 1 and not w.replace(".", "").replace("-", "").isdigit()}
         if not desc_content:
             return 1.0
 
         # Count description content words that share no stem overlap with any query word
+        # Only compare against non-numeric query words for concept matching
+        query_concepts = {w for w in query_words if not w.replace(".", "").replace("-", "").isdigit()}
+
         def _stems_overlap(w1: str, w2: str) -> bool:
             """Check if two words share a common stem (first 4+ chars)."""
             min_len = min(len(w1), len(w2))
@@ -225,7 +286,7 @@ class ImageCatalogueSearch:
 
         extra_concepts = 0
         for dw in desc_content:
-            if any(_stems_overlap(dw, qw) for qw in query_words):
+            if any(_stems_overlap(dw, qw) for qw in query_concepts):
                 continue
             extra_concepts += 1
 
@@ -281,11 +342,13 @@ class ImageCatalogueSearch:
             desc_norm = _normalise(self.images[cat_idx].get("description", ""))
             coverage = self._keyword_coverage(norm_query, desc_norm)
             extra_penalty = self._extra_content_penalty(norm_query, desc_norm)
+            num_penalty = self._numeric_mismatch_penalty(norm_query, desc_norm)
 
-            # Combined score with both penalties:
+            # Combined score with all penalties:
             # - coverage: penalize missing query keywords (0.5 + 0.5 * coverage)
-            # - extra_penalty: penalize extra description keywords (1.0 to ~0.5)
-            combined = (0.4 * tfidf_score + 0.6 * clip_score) * (0.5 + 0.5 * coverage) * extra_penalty
+            # - extra_penalty: penalize extra description concepts (1.0 to ~0.6)
+            # - num_penalty: penalize different numbers (1.0 to ~0.3)
+            combined = (0.4 * tfidf_score + 0.6 * clip_score) * (0.5 + 0.5 * coverage) * extra_penalty * num_penalty
 
             if combined >= min_score:
                 entry = self.images[cat_idx].copy()
