@@ -465,6 +465,168 @@
     .issues-list strong { color: var(--orange); font-size: 12px; text-transform: uppercase; }
     .issues-list ul { margin: 6px 0 0 16px; color: #666; }
     .issues-list li { margin-bottom: 3px; }
+
+    /* Folder Processor */
+    .folder-file-table {
+      border: 1px solid var(--gray);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .folder-file-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--gray);
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .folder-file-row:last-child { border-bottom: none; }
+    .folder-file-row:hover { background: var(--light); }
+    .folder-file-row.no-placeholders { display: none; }
+    .folder-file-row.excluded { opacity: 0.4; }
+    .folder-file-row.excluded .file-name { text-decoration: line-through; color: #999; }
+    .folder-file-row .folder-checkbox {
+      width: 16px; height: 16px; cursor: pointer; accent-color: var(--teal); flex-shrink: 0;
+    }
+    .folder-file-row .file-name { flex: 1; font-weight: 500; }
+    .folder-file-row .file-count {
+      background: var(--teal);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+      min-width: 24px;
+      text-align: center;
+    }
+    .folder-file-row.no-placeholders .file-count { background: var(--gray); color: #999; }
+    .folder-file-row .expand-icon {
+      font-size: 12px;
+      transition: transform 0.2s;
+      color: #999;
+    }
+    .folder-file-row .expand-icon.expanded { transform: rotate(90deg); }
+    .folder-file-details {
+      display: none;
+      padding: 0 14px 10px 44px;
+      border-bottom: 1px solid var(--gray);
+    }
+    .folder-file-details.expanded { display: block; }
+    .folder-file-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      background: var(--light);
+      border-bottom: 1px solid var(--gray);
+      font-size: 12px;
+      font-weight: 600;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .folder-results-group {
+      margin-top: 20px;
+    }
+    .folder-results-group h4 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--navy);
+      margin-bottom: 8px;
+      padding: 8px 12px;
+      background: var(--light);
+      border-radius: 6px;
+    }
+
+    /* Catalogue search */
+    .catalogue-results {
+      display: none;
+      margin-top: 16px;
+      border: 1px solid var(--gray);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .catalogue-results.active { display: block; }
+    .catalogue-results-header {
+      padding: 10px 14px;
+      background: var(--light);
+      border-bottom: 1px solid var(--gray);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--navy);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .catalogue-match {
+      display: flex;
+      gap: 14px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--gray);
+      align-items: center;
+      transition: background 0.15s;
+      cursor: pointer;
+    }
+    .catalogue-match:last-child { border-bottom: none; }
+    .catalogue-match:hover { background: rgba(3, 167, 135, 0.04); }
+    .catalogue-match .match-preview {
+      width: 100px;
+      height: 100px;
+      border: 1px solid var(--gray);
+      border-radius: 6px;
+      overflow: hidden;
+      background: white;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .catalogue-match .match-preview img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    .catalogue-match .match-info { flex: 1; min-width: 0; }
+    .catalogue-match .match-desc {
+      font-size: 13px;
+      color: var(--dark);
+      margin-bottom: 4px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .catalogue-match .match-meta {
+      font-size: 11px;
+      color: #999;
+    }
+    .catalogue-match .match-score {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+    .match-score.high { background: #e8f8f0; color: var(--green); }
+    .match-score.medium { background: #fef9e7; color: var(--orange); }
+    .match-score.low { background: var(--light); color: #999; }
+    .btn-use-match {
+      background: var(--teal);
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .btn-use-match:hover { background: #029976; }
+    .btn-search { background: var(--blue); color: white; }
+    .btn-search:hover { background: #066aa8; }
   </style>
 </head>
 <body>
@@ -482,6 +644,7 @@
     <div class="tab active" data-tab="single">Single</div>
     <div class="tab" data-tab="batch">Batch</div>
     <div class="tab" data-tab="jsx">JSX Processor</div>
+    <div class="tab" data-tab="folder">Folder Processor</div>
   </div>
 
   <div class="container">
@@ -674,6 +837,84 @@
       <div id="jsx-results"></div>
     </div>
 
+    <!-- ============ FOLDER PROCESSOR TAB ============ -->
+    <div class="panel" id="panel-folder">
+
+      <div class="batch-help">
+        Upload a folder of JSX files. Each file is scanned for placeholder images
+        (<code>&lt;Image&gt;</code> or <code>&lt;DraftImage&gt;</code> with <code>image-coming-soon.svg</code>).
+        Files with placeholders are processed; files without are copied as-is into the output ZIP.
+      </div>
+
+      <!-- Folder upload -->
+      <div class="file-upload-zone" id="folder-file-zone">
+        <input type="file" id="folder-file-input" webkitdirectory directory multiple onchange="handleFolderUpload(event)">
+        <div class="icon">&#128193;</div>
+        <div class="label" id="folder-file-label">Drop a folder here or click to browse</div>
+        <div class="hint">Selects an entire folder of .jsx / .mdx files</div>
+      </div>
+
+      <!-- Scan results / file table -->
+      <div id="folder-scan-results" style="display:none">
+        <div class="form-group">
+          <label>Folder: <span id="folder-name" style="color:var(--teal)"></span> — <span id="folder-total-placeholders">0</span> placeholders across <span id="folder-files-with">0</span> file(s)</label>
+        </div>
+
+        <div class="folder-file-table" id="folder-file-table"></div>
+
+        <div class="row">
+          <div class="form-group">
+            <label>Width override (all)</label>
+            <input type="number" id="folder-width" value="260" min="100" max="1000">
+          </div>
+          <div class="form-group">
+            <label>Height override (all)</label>
+            <input type="number" id="folder-height" value="260" min="100" max="1000">
+          </div>
+        </div>
+
+        <div class="checkbox-row">
+          <input type="checkbox" id="folder-upload" checked>
+          <label for="folder-upload">Upload and generate DraftImages with HTTPS URLs</label>
+        </div>
+
+        <div class="checkbox-row">
+          <input type="checkbox" id="folder-figma">
+          <label for="folder-figma">Use Figma styling (brand colours & fonts)</label>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-folder-generate" onclick="generateFolder()">Generate All Images</button>
+          <button class="btn btn-secondary" onclick="clearFolder()">Clear</button>
+        </div>
+      </div>
+
+      <div id="folder-error"></div>
+
+      <!-- Progress panel -->
+      <div class="batch-progress" id="folder-progress">
+        <div class="batch-progress-header">
+          <h3 id="folder-title">Generating images...</h3>
+          <div class="batch-progress-stats">
+            <span class="timer" id="folder-timer">00:00</span>
+            <span id="folder-eta" style="color:var(--blue)"></span>
+            <span id="folder-pcount">0 / 0</span>
+          </div>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar-fill" id="folder-bar"></div>
+        </div>
+        <div class="batch-progress-detail">
+          <span class="current-item" id="folder-current">Preparing...</span>
+          <button class="btn btn-cancel" id="folder-cancel" onclick="cancelFolder()">Cancel</button>
+        </div>
+      </div>
+
+      <div id="folder-summary"></div>
+      <div id="folder-download-bar"></div>
+      <div id="folder-results"></div>
+    </div>
+
   </div>
 
   <!-- Loading overlay -->
@@ -817,12 +1058,11 @@
     // Store data for potential retry
     resultStore[index] = data;
 
-    // Show retry button if validation failed or has issues
+    // Always show retry button so user can regenerate any image
     const v = data.metadata?.validation;
     const hasIssues = v && (v.status === 'failed' || (v.issues && v.issues.length > 0));
-    const retryBtn = hasIssues
-      ? `<button class="btn btn-retry" id="retry-btn-${index}" onclick="retryGeneration(${index})">Retry</button>`
-      : '';
+    const retryLabel = hasIssues ? 'Retry' : 'Regenerate';
+    const retryBtn = `<button class="btn btn-retry" id="retry-btn-${index}" onclick="retryGeneration(${index})">${retryLabel}</button>`;
 
     // Show validate button if validation was skipped
     const wasSkipped = v && v.status === 'skipped';
@@ -912,6 +1152,25 @@
         }
       } catch { clearInterval(interval); }
     }, 2000);
+  }
+
+  /**
+   * Wait for a background upload to complete. Returns the upload result
+   * with { hosted_url, draft_image } or null on failure/timeout.
+   */
+  async function waitForUpload(uploadId, maxWaitMs = 60000) {
+    const pollInterval = 2000;
+    const maxAttempts = Math.ceil(maxWaitMs / pollInterval);
+    for (let i = 0; i < maxAttempts; i++) {
+      await new Promise(r => setTimeout(r, pollInterval));
+      try {
+        const resp = await fetch(`/api/upload-status/${uploadId}`);
+        const entry = await resp.json();
+        if (entry.status === 'done') return entry;
+        if (entry.status === 'error') return null;
+      } catch { return null; }
+    }
+    return null;
   }
 
   // --------------- Manual retry ---------------
@@ -1045,6 +1304,150 @@
   }
 
   // --------------- Single generate ---------------
+  const CATALOGUE_AUTO_THRESHOLD = 0.30;
+  let _forceGenerate = false;
+
+  /**
+   * Search the catalogue for an existing image matching the description.
+   * Returns { match, imageTag, scorePct } if found above threshold, or null.
+   */
+  async function searchCatalogue(desc, w, h) {
+    try {
+      const searchResp = await fetch('/api/search-catalogue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: desc, top_k: 1 }),
+      });
+      if (searchResp.ok) {
+        const searchData = await searchResp.json();
+        if (searchData.results && searchData.results.length > 0 && searchData.results[0].score >= CATALOGUE_AUTO_THRESHOLD) {
+          const match = searchData.results[0];
+          const path = match.image_path || '';
+          const matchDesc = match.description || desc;
+          const scorePct = Math.round(match.score * 100);
+          const imageTag = `<Image\n  path="${escapeHtml(path)}"\n  width={${w}}\n  height={${h}}\n  accessibilityDescription="${escapeHtml(matchDesc)}"\n/>`;
+          return { match, imageTag, scorePct };
+        }
+      }
+    } catch (e) {
+      // Catalogue search failed — proceed silently
+    }
+    return null;
+  }
+
+  /** Render a compact catalogue match card for batch/JSX/folder results. */
+  function renderCatalogueCard(catalogueResult, index, showGenerateNew, originalDesc) {
+    const { match, imageTag, scorePct } = catalogueResult;
+    const descLine = originalDesc ? `<div style="font-size:13px;color:#444;margin-bottom:8px;padding:6px 10px;background:var(--bg);border-radius:4px"><strong>Description:</strong> ${escapeHtml(originalDesc)}</div>` : '';
+    let generateBtn = '';
+    if (showGenerateNew === true) {
+      // Single generator — uses global forceGenerateNew()
+      generateBtn = `<button class="btn btn-retry" onclick="forceGenerateNew()">Generate New Instead</button>`;
+    } else if (typeof showGenerateNew === 'string') {
+      // Batch/JSX — store info and call per-item regeneration
+      generateBtn = `<button class="btn btn-retry" onclick="regenerateFromCatalogue('${index}', '${showGenerateNew}')">Generate New Instead</button>`;
+    }
+    return `
+      <div class="result-card" id="result-card-${index}" style="margin-top:12px">
+        <div class="result-header">
+          <h3>Existing Image (from catalogue)</h3>
+          <div class="result-header-right">
+            <span class="badge badge-passed">CATALOGUE MATCH ${scorePct}%</span>
+            ${generateBtn}
+          </div>
+        </div>
+        <div class="result-body">
+          ${descLine}
+          <div class="result-grid">
+            <div class="svg-preview">
+              ${match.image_url ? `<img src="${escapeHtml(match.image_url)}" style="max-width:260px;max-height:260px" onerror="this.alt='Preview unavailable'">` : '<span style="color:#999">No preview</span>'}
+            </div>
+            <div>
+              <div class="code-block" id="catalogue-code-${index}">
+                <button class="btn btn-copy" onclick="copyCode('catalogue-code-${index}')">Copy</button>${escapeHtml(imageTag)}</div>
+              <div class="meta-row">
+                <span>Source: ${escapeHtml(match.book_title || 'Unknown')}</span>
+                <span>${match.width}x${match.height}</span>
+                <span>${match.image_format || 'svg'}</span>
+              </div>
+              <div class="meta-row">
+                <span style="color:var(--teal)">Match: ${escapeHtml(match.description || '').substring(0, 120)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function forceGenerateNew() {
+    _forceGenerate = true;
+    generateSingle();
+  }
+
+  // Store catalogue card info for per-item regeneration in batch/JSX
+  const catalogueCardStore = {};
+
+  async function regenerateFromCatalogue(cardId, storeKey) {
+    const info = catalogueCardStore[storeKey];
+    if (!info) { alert('No stored info for regeneration'); return; }
+
+    const card = document.getElementById(`result-card-${cardId}`);
+    if (!card) return;
+
+    // Show loading overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'retry-overlay';
+    overlay.innerHTML = `
+      <div class="retry-spinner"></div>
+      <div class="retry-label">Generating via LLM...</div>
+      <div class="retry-timer">00:00</div>`;
+    card.appendChild(overlay);
+
+    const retryStart = Date.now();
+    const retryTimerEl = overlay.querySelector('.retry-timer');
+    const retryInterval = setInterval(() => {
+      retryTimerEl.textContent = formatTime((Date.now() - retryStart) / 1000);
+    }, 500);
+
+    try {
+      const resp = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description: info.desc,
+          width: info.w,
+          height: info.h,
+          upload: info.upload !== undefined ? info.upload : true,
+          use_figma_styling: info.useFigma !== undefined ? info.useFigma : true,
+        }),
+      });
+
+      clearInterval(retryInterval);
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        overlay.remove();
+        alert(`Generation failed: ${data.error || 'Unknown error'}`);
+        return;
+      }
+
+      // Replace the catalogue card with the LLM result card
+      data.description = info.desc;
+      data._request = { width: info.w, height: info.h, upload: info.upload, use_figma_styling: info.useFigma };
+      const newIndex = 9000 + Date.now() % 10000;
+      resultStore[newIndex] = data;
+      card.outerHTML = renderResultCard(data, newIndex);
+
+      // Update replacement if callback provided
+      if (info.onReplace) info.onReplace(data.draft_image);
+      if (data.upload_id) pollUploadStatus(data.upload_id, newIndex);
+    } catch (e) {
+      clearInterval(retryInterval);
+      overlay.remove();
+      alert('Generation error: ' + e.message);
+    }
+  }
+
   async function generateSingle() {
     const desc = document.getElementById('single-desc').value.trim();
     if (!desc) { alert('Enter a description'); return; }
@@ -1053,7 +1456,25 @@
     btn.disabled = true;
     document.getElementById('single-error').innerHTML = '';
     document.getElementById('single-result').innerHTML = '';
+    const w = parseInt(document.getElementById('single-width').value) || 260;
+    const h = parseInt(document.getElementById('single-height').value) || 260;
 
+    // Step 1: Search catalogue for existing image (skip if user forced generate)
+    if (_forceGenerate) {
+      _forceGenerate = false;
+    } else {
+      btn.textContent = 'Searching catalogue...';
+      const catalogueResult = await searchCatalogue(desc, w, h);
+      if (catalogueResult) {
+        document.getElementById('single-result').innerHTML = renderCatalogueCard(catalogueResult, 'single', true);
+        btn.disabled = false;
+        btn.textContent = 'Generate SVG';
+        return;
+      }
+    }
+
+    // Step 2: No good match — generate via LLM
+    btn.textContent = 'Generating...';
     showLoading('Generating SVG...', desc.substring(0, 80));
 
     try {
@@ -1063,8 +1484,8 @@
         body: JSON.stringify({
           description: desc,
           name: document.getElementById('single-name').value.trim(),
-          width: parseInt(document.getElementById('single-width').value) || 260,
-          height: parseInt(document.getElementById('single-height').value) || 260,
+          width: w,
+          height: h,
           upload: document.getElementById('single-upload').checked,
           use_figma_styling: document.getElementById('single-figma').checked,
         }),
@@ -1081,8 +1502,8 @@
       data.description = desc;
       data._request = {
         name: document.getElementById('single-name').value.trim(),
-        width: parseInt(document.getElementById('single-width').value) || 260,
-        height: parseInt(document.getElementById('single-height').value) || 260,
+        width: w,
+        height: h,
         upload: document.getElementById('single-upload').checked,
         use_figma_styling: document.getElementById('single-figma').checked,
       };
@@ -1094,6 +1515,7 @@
         `<div class="error-msg">Network error: ${escapeHtml(e.message)}</div>`;
     } finally {
       btn.disabled = false;
+      btn.textContent = 'Generate SVG';
       hideLoading();
     }
   }
@@ -1217,6 +1639,27 @@
         continue;
       }
 
+      updateBatchProgress(i, items.length, `Searching catalogue for #${i + 1}...`, Date.now() - startTime);
+
+      // Step 1: Search catalogue
+      const catalogueResult = await searchCatalogue(desc, w, h);
+      if (catalogueResult) {
+        // Use catalogue match
+        const storeKey = `batch-${i}`;
+        const entry = {
+          index: i, description: desc, status: 'ok',
+          draft_image: catalogueResult.imageTag,
+          _catalogue: true,
+        };
+        results.push(entry);
+        okCount++;
+        catalogueCardStore[storeKey] = { desc, w, h, upload: doUpload, useFigma };
+        resultsContainer.innerHTML += renderCatalogueCard(catalogueResult, `batch-${i}`, storeKey, desc);
+        updateBatchProgress(i + 1, items.length, `#${i + 1} found in catalogue (${catalogueResult.scorePct}%)`, Date.now() - startTime);
+        continue;
+      }
+
+      // Step 2: No catalogue match — generate via LLM
       updateBatchProgress(i, items.length, `Generating #${i + 1}: ${desc.substring(0, 60)}...`, Date.now() - startTime);
 
       try {
@@ -1246,12 +1689,23 @@
           data.description = desc;
           data.status = 'ok';
           data._request = { name: item.name || '', width: w, height: h, upload: doUpload, use_figma_styling: useFigma };
-          results.push(data);
           okCount++;
-          if (data.hosted_url) uploadedCount++;
           // Append result card immediately
           resultsContainer.innerHTML += renderResultCard(data, i);
-          if (data.upload_id) pollUploadStatus(data.upload_id, i);
+
+          // Wait for upload to complete so draft_image has the real URL
+          if (data.upload_id) {
+            updateBatchProgress(i + 1, items.length, `Uploading #${i + 1}...`, Date.now() - startTime);
+            const uploadResult = await waitForUpload(data.upload_id);
+            if (uploadResult && uploadResult.draft_image) {
+              data.draft_image = uploadResult.draft_image;
+              data.hosted_url = uploadResult.hosted_url;
+              const draftEl = document.getElementById(`draft-${i}`);
+              if (draftEl) draftEl.textContent = data.draft_image;
+            }
+          }
+          if (data.hosted_url) uploadedCount++;
+          results.push(data);
 
           // Show retry info briefly if validation took multiple attempts
           const vAttempts = data.metadata?.validation?.attempts || 1;
@@ -1278,11 +1732,14 @@
     finishBatchProgress(okCount + failedCount, items.length, batchCancelled);
 
     // Summary stats
+    const catalogueCount = results.filter(r => r._catalogue).length;
+    const generatedCount = okCount - catalogueCount;
     const validated = results.filter(r => r.metadata?.validation?.status === 'passed').length;
     const skippedCount = batchCancelled ? items.length - (okCount + failedCount) : 0;
     document.getElementById('batch-summary').innerHTML = `
       <div class="batch-summary">
-        <div class="stat"><div class="stat-value">${okCount}</div><div class="stat-label">Generated</div></div>
+        ${catalogueCount ? `<div class="stat"><div class="stat-value" style="color:var(--teal)">${catalogueCount}</div><div class="stat-label">From Catalogue</div></div>` : ''}
+        <div class="stat"><div class="stat-value">${generatedCount}</div><div class="stat-label">Generated</div></div>
         <div class="stat"><div class="stat-value">${validated}</div><div class="stat-label">Validated</div></div>
         <div class="stat"><div class="stat-value">${uploadedCount}</div><div class="stat-label">Uploaded</div></div>
         <div class="stat"><div class="stat-value ${failedCount ? 'failed' : ''}">${failedCount}</div><div class="stat-label">Failed</div></div>
@@ -1488,6 +1945,7 @@
     const replacements = [];
     let okCount = 0;
     let failedCount = 0;
+    let catalogueMatchCount = 0;
     const resultsContainer = document.getElementById('jsx-results');
 
     for (let i = 0; i < total; i++) {
@@ -1510,37 +1968,73 @@
       const h = hOverride || p.height || 260;
 
       document.getElementById('jsx-pcount').textContent = `${i} / ${total}`;
-      document.getElementById('jsx-current').textContent = `Generating #${i + 1}: ${desc.substring(0, 50)}...`;
+      document.getElementById('jsx-current').textContent = `Searching catalogue for #${i + 1}...`;
 
-      try {
-        const resp = await fetch('/api/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ description: desc, width: w, height: h, upload: doUpload, use_figma_styling: useFigma }),
+      // Step 1: Search catalogue
+      const catalogueResult = await searchCatalogue(desc, w, h);
+      if (catalogueResult) {
+        okCount++;
+        catalogueMatchCount++;
+        const jsxStoreKey = `jsx-${i}`;
+        const repIdx = replacements.length;
+        catalogueCardStore[jsxStoreKey] = {
+          desc, w, h, upload: doUpload, useFigma: useFigma,
+          onReplace: (newCode) => { replacements[repIdx].new_code = newCode; },
+        };
+        resultsContainer.innerHTML += renderCatalogueCard(catalogueResult, `jsx-${i}`, jsxStoreKey, desc);
+        const jsxComment = `{/* Original description: ${desc.replace(/\*\//g, '* /')} */}\n`;
+        replacements.push({
+          char_start: p.char_start,
+          char_end: p.char_end,
+          new_code: jsxComment + catalogueResult.imageTag,
         });
+      } else {
+        // Step 2: No catalogue match — generate via LLM
+        document.getElementById('jsx-current').textContent = `Generating #${i + 1}: ${desc.substring(0, 50)}...`;
 
-        if (jsxCancelled) break;
-        const data = await resp.json();
-
-        if (!resp.ok) {
-          failedCount++;
-          resultsContainer.innerHTML += `<div class="error-msg" style="margin-top:12px">#${i + 1}: ${escapeHtml(data.error || 'Failed')}</div>`;
-        } else {
-          okCount++;
-          data.description = desc;
-          data._request = { width: w, height: h, upload: doUpload, use_figma_styling: useFigma };
-          resultsContainer.innerHTML += renderResultCard(data, 1000 + i);
-
-          // Build replacement entry
-          replacements.push({
-            char_start: p.char_start,
-            char_end: p.char_end,
-            new_code: data.draft_image,
+        try {
+          const resp = await fetch('/api/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ description: desc, width: w, height: h, upload: doUpload, use_figma_styling: useFigma }),
           });
+
+          if (jsxCancelled) break;
+          const data = await resp.json();
+
+          if (!resp.ok) {
+            failedCount++;
+            resultsContainer.innerHTML += `<div class="error-msg" style="margin-top:12px">#${i + 1}: ${escapeHtml(data.error || 'Failed')}</div>`;
+          } else {
+            okCount++;
+            data.description = desc;
+            data._request = { width: w, height: h, upload: doUpload, use_figma_styling: useFigma };
+            resultsContainer.innerHTML += renderResultCard(data, 1000 + i);
+
+            // Wait for upload to complete so replacement has the real URL
+            let draftCode = data.draft_image;
+            if (data.upload_id) {
+              document.getElementById('jsx-current').textContent = `Uploading #${i + 1}...`;
+              const uploadResult = await waitForUpload(data.upload_id);
+              if (uploadResult && uploadResult.draft_image) {
+                draftCode = uploadResult.draft_image;
+                // Update the card too
+                const draftEl = document.getElementById(`draft-${1000 + i}`);
+                if (draftEl) draftEl.textContent = draftCode;
+              }
+            }
+
+            // Build replacement entry
+            replacements.push({
+              char_start: p.char_start,
+              char_end: p.char_end,
+              new_code: draftCode,
+            });
+          }
+        } catch (e) {
+          failedCount++;
+          resultsContainer.innerHTML += `<div class="error-msg" style="margin-top:12px">#${i + 1}: ${escapeHtml(e.message)}</div>`;
         }
-      } catch (e) {
-        failedCount++;
-        resultsContainer.innerHTML += `<div class="error-msg" style="margin-top:12px">#${i + 1}: ${escapeHtml(e.message)}</div>`;
       }
 
       // Update progress with ETA
@@ -1574,9 +2068,11 @@
     document.getElementById('jsx-cancel').textContent = 'Done';
 
     // Summary
+    const jsxGeneratedCount = okCount - catalogueMatchCount;
     document.getElementById('jsx-summary').innerHTML = `
       <div class="batch-summary">
-        <div class="stat"><div class="stat-value">${okCount}</div><div class="stat-label">Generated</div></div>
+        ${catalogueMatchCount ? `<div class="stat"><div class="stat-value" style="color:var(--teal)">${catalogueMatchCount}</div><div class="stat-label">From Catalogue</div></div>` : ''}
+        <div class="stat"><div class="stat-value">${jsxGeneratedCount}</div><div class="stat-label">Generated</div></div>
         <div class="stat"><div class="stat-value ${failedCount ? 'failed' : ''}">${failedCount}</div><div class="stat-label">Failed</div></div>
         <div class="stat"><div class="stat-value" style="color:var(--blue)">${totalTime}s</div><div class="stat-label">Total time</div></div>
       </div>`;
@@ -1624,6 +2120,461 @@
     }
   }
 
+  // =============== FOLDER PROCESSOR ===============
+
+  let folderData = null;       // scan result from /api/folder/scan
+  let folderReplacements = {}; // { relative_path: [ {char_start, char_end, new_code} ] }
+  let folderSvgMap = {};       // { jsx_filename_stem: [svg_filename, ...] }
+  let folderCancelled = false;
+  let folderTimerInterval = null;
+
+  const folderFileZone = document.getElementById('folder-file-zone');
+  const folderFileInput = document.getElementById('folder-file-input');
+
+  // Drag-and-drop styling
+  ['dragenter', 'dragover'].forEach(evt => {
+    folderFileZone.addEventListener(evt, e => { e.preventDefault(); folderFileZone.classList.add('dragover'); });
+  });
+  ['dragleave', 'drop'].forEach(evt => {
+    folderFileZone.addEventListener(evt, e => { e.preventDefault(); folderFileZone.classList.remove('dragover'); });
+  });
+
+  function handleFolderUpload(e) {
+    const files = e.target.files;
+    if (files && files.length > 0) uploadFolder(files);
+  }
+
+  async function uploadFolder(files) {
+    document.getElementById('folder-error').innerHTML = '';
+    document.getElementById('folder-file-label').textContent = `Scanning ${files.length} file(s)...`;
+
+    const formData = new FormData();
+    for (const f of files) {
+      formData.append('files', f);
+    }
+
+    try {
+      const resp = await fetch('/api/folder/scan', { method: 'POST', body: formData });
+      const data = await resp.json();
+      if (!resp.ok) {
+        document.getElementById('folder-error').innerHTML = `<div class="error-msg">${escapeHtml(data.error)}</div>`;
+        document.getElementById('folder-file-label').textContent = 'Drop a folder here or click to browse';
+        return;
+      }
+
+      folderData = data;
+      folderReplacements = {};
+      folderSvgMap = {};
+
+      document.getElementById('folder-file-label').textContent = `${data.folder_name} — ${data.total_files} file(s), ${data.total_placeholders} placeholder(s)`;
+      folderFileZone.classList.add('has-file');
+      document.getElementById('folder-name').textContent = data.folder_name;
+      document.getElementById('folder-total-placeholders').textContent = data.total_placeholders;
+      document.getElementById('folder-files-with').textContent = data.files_with_placeholders;
+
+      // Render file table
+      renderFolderFileTable(data.files);
+
+      document.getElementById('folder-scan-results').style.display = data.total_placeholders > 0 ? 'block' : 'none';
+      if (data.total_placeholders === 0) {
+        document.getElementById('folder-error').innerHTML = '<div class="error-msg">No placeholder images found in any file in this folder.</div>';
+      }
+    } catch (e) {
+      document.getElementById('folder-error').innerHTML = `<div class="error-msg">Scan error: ${escapeHtml(e.message)}</div>`;
+      document.getElementById('folder-file-label').textContent = 'Drop a folder here or click to browse';
+    }
+  }
+
+  // Track which files are excluded from processing
+  let folderExcluded = new Set();
+
+  function renderFolderFileTable(files) {
+    folderExcluded = new Set();
+    const table = document.getElementById('folder-file-table');
+
+    // Only show files with placeholders
+    const filesWithImages = files.filter(f => f.placeholder_count > 0);
+
+    let html = `<div class="folder-file-header">
+      <span style="width:22px"></span>
+      <span style="flex:1">File</span>
+      <span style="width:80px;text-align:center">Images</span>
+      <span style="width:24px"></span>
+    </div>`;
+
+    filesWithImages.forEach((f) => {
+      const i = files.indexOf(f);
+
+      html += `<div class="folder-file-row" id="folder-row-${i}">
+        <input type="checkbox" class="folder-checkbox" id="folder-check-${i}" checked onchange="toggleFolderExclude(${i})" onclick="event.stopPropagation()">
+        <span class="file-name" onclick="toggleFolderFile(${i})" style="cursor:pointer">${escapeHtml(f.relative_path)}</span>
+        <span class="file-count">${f.placeholder_count}</span>
+        <span class="expand-icon" id="folder-expand-${i}" onclick="toggleFolderFile(${i})" style="cursor:pointer">&#9654;</span>
+      </div>`;
+
+      html += `<div class="folder-file-details" id="folder-details-${i}">`;
+      f.placeholders.forEach((p, pi) => {
+        html += `<div style="padding:8px 0;border-bottom:1px solid var(--gray);display:flex;gap:10px;align-items:start">
+          <span style="font-weight:600;color:var(--blue);min-width:20px;font-size:12px">#${pi + 1}</span>
+          <div style="flex:1">
+            <textarea class="folder-desc-edit" id="folder-desc-${i}-${pi}" rows="2"
+              style="width:100%;font-size:12px;padding:5px;border:1px solid var(--gray);border-radius:4px;font-family:inherit;resize:vertical"
+            >${escapeHtml(p.description)}</textarea>
+            <div style="font-size:11px;color:#999;margin-top:2px">&lt;${p.tag}&gt; · ${p.width}x${p.height}</div>
+          </div>
+        </div>`;
+      });
+      html += `</div>`;
+    });
+
+    table.innerHTML = html;
+    updateFolderCounts();
+  }
+
+  function toggleFolderExclude(fileIndex) {
+    const row = document.getElementById(`folder-row-${fileIndex}`);
+    const checkbox = document.getElementById(`folder-check-${fileIndex}`);
+    if (!row || !checkbox) return;
+
+    if (checkbox.checked) {
+      // Including — remove from excluded
+      folderExcluded.delete(fileIndex);
+      row.classList.remove('excluded');
+    } else {
+      // Excluding — add to excluded
+      folderExcluded.add(fileIndex);
+      row.classList.add('excluded');
+      // Collapse details if expanded
+      const details = document.getElementById(`folder-details-${fileIndex}`);
+      if (details) details.classList.remove('expanded');
+      const icon = document.getElementById(`folder-expand-${fileIndex}`);
+      if (icon) icon.classList.remove('expanded');
+    }
+    updateFolderCounts();
+  }
+
+  function updateFolderCounts() {
+    if (!folderData) return;
+    const activeFiles = folderData.files.filter((f, i) => f.placeholder_count > 0 && !folderExcluded.has(i));
+    const activePlaceholders = activeFiles.reduce((sum, f) => sum + f.placeholder_count, 0);
+    document.getElementById('folder-total-placeholders').textContent = activePlaceholders;
+    document.getElementById('folder-files-with').textContent = activeFiles.length;
+  }
+
+  function toggleFolderFile(fileIndex) {
+    const details = document.getElementById(`folder-details-${fileIndex}`);
+    const icon = document.getElementById(`folder-expand-${fileIndex}`);
+    if (!details) return;
+    const isExpanded = details.classList.contains('expanded');
+    details.classList.toggle('expanded');
+    icon.classList.toggle('expanded');
+  }
+
+  function clearFolder() {
+    folderData = null;
+    folderReplacements = {};
+    folderSvgMap = {};
+    document.getElementById('folder-file-label').textContent = 'Drop a folder here or click to browse';
+    folderFileZone.classList.remove('has-file');
+    folderFileInput.value = '';
+    document.getElementById('folder-scan-results').style.display = 'none';
+    document.getElementById('folder-error').innerHTML = '';
+    document.getElementById('folder-summary').innerHTML = '';
+    document.getElementById('folder-download-bar').innerHTML = '';
+    document.getElementById('folder-results').innerHTML = '';
+    document.getElementById('folder-progress').classList.remove('active');
+  }
+
+  function cancelFolder() {
+    folderCancelled = true;
+    document.getElementById('folder-cancel').disabled = true;
+    document.getElementById('folder-cancel').textContent = 'Cancelling...';
+    document.getElementById('folder-bar').classList.add('cancelled');
+    document.getElementById('folder-current').textContent = 'Cancelling after current item...';
+  }
+
+  async function generateFolder() {
+    if (!folderData || !folderData.files.length) return;
+
+    const btn = document.getElementById('btn-folder-generate');
+    btn.disabled = true;
+    folderCancelled = false;
+    folderReplacements = {};
+    folderSvgMap = {};
+    document.getElementById('folder-error').innerHTML = '';
+    document.getElementById('folder-summary').innerHTML = '';
+    document.getElementById('folder-download-bar').innerHTML = '';
+    document.getElementById('folder-results').innerHTML = '';
+
+    const doUpload = document.getElementById('folder-upload').checked;
+    const useFigma = document.getElementById('folder-figma').checked;
+    const wOverride = parseInt(document.getElementById('folder-width').value) || 260;
+    const hOverride = parseInt(document.getElementById('folder-height').value) || 260;
+
+    // Count total placeholders across included files (skip excluded)
+    const filesWithPlaceholders = folderData.files.filter((f, i) => f.placeholder_count > 0 && !folderExcluded.has(i));
+    const totalPlaceholders = filesWithPlaceholders.reduce((sum, f) => sum + f.placeholder_count, 0);
+
+    if (totalPlaceholders === 0) {
+      document.getElementById('folder-error').innerHTML = '<div class="error-msg">No files selected for processing.</div>';
+      btn.disabled = false;
+      return;
+    }
+
+    // Show progress
+    const progEl = document.getElementById('folder-progress');
+    progEl.classList.add('active');
+    document.getElementById('folder-title').textContent = `Generating ${totalPlaceholders} image(s) across ${filesWithPlaceholders.length} file(s)...`;
+    document.getElementById('folder-pcount').textContent = `0 / ${totalPlaceholders}`;
+    document.getElementById('folder-timer').textContent = '00:00';
+    document.getElementById('folder-eta').textContent = `ETA: ~${formatTime(SINGLE_ESTIMATE_SECONDS * totalPlaceholders)}`;
+    document.getElementById('folder-bar').style.width = '0%';
+    document.getElementById('folder-bar').classList.remove('cancelled');
+    document.getElementById('folder-current').textContent = 'Starting...';
+    document.getElementById('folder-cancel').disabled = false;
+    document.getElementById('folder-cancel').textContent = 'Cancel';
+
+    const startTime = Date.now();
+    folderTimerInterval = setInterval(() => {
+      document.getElementById('folder-timer').textContent = formatTime((Date.now() - startTime) / 1000);
+    }, 500);
+
+    let okCount = 0;
+    let failedCount = 0;
+    let catalogueMatchCount = 0;
+    let globalIdx = 0;
+    const resultsContainer = document.getElementById('folder-results');
+
+    for (let fi = 0; fi < folderData.files.length; fi++) {
+      const fileEntry = folderData.files[fi];
+      if (folderCancelled) break;
+      if (fileEntry.placeholder_count === 0) continue;
+      if (folderExcluded.has(fi)) continue;
+
+      const fileStem = fileEntry.filename.replace(/\.[^.]+$/, '');
+      folderReplacements[fileEntry.relative_path] = [];
+      folderSvgMap[fileStem] = [];
+
+      // Add file group header
+      resultsContainer.innerHTML += `<div class="folder-results-group"><h4>${escapeHtml(fileEntry.relative_path)} (${fileEntry.placeholder_count} images)</h4></div>`;
+
+      for (let pi = 0; pi < fileEntry.placeholders.length; pi++) {
+        if (folderCancelled) break;
+
+        const p = fileEntry.placeholders[pi];
+        const fileIdx = fi;
+
+        // Read potentially edited description
+        const descEl = document.getElementById(`folder-desc-${fileIdx}-${pi}`);
+        const desc = descEl ? descEl.value.trim() : p.description;
+
+        if (!desc) {
+          failedCount++;
+          globalIdx++;
+          document.getElementById('folder-pcount').textContent = `${globalIdx} / ${totalPlaceholders}`;
+          document.getElementById('folder-current').textContent = `Skipped (no description)`;
+          continue;
+        }
+
+        const w = wOverride || p.width || 260;
+        const h = hOverride || p.height || 260;
+
+        document.getElementById('folder-pcount').textContent = `${globalIdx} / ${totalPlaceholders}`;
+        document.getElementById('folder-current').textContent = `Searching catalogue: ${fileEntry.filename} #${pi + 1}...`;
+
+        // Step 1: Search catalogue
+        const catalogueResult = await searchCatalogue(desc, w, h);
+        if (catalogueResult) {
+          okCount++;
+          catalogueMatchCount++;
+          resultsContainer.innerHTML += renderCatalogueCard(catalogueResult, `folder-${globalIdx}`, false, desc);
+
+          // Track replacement — use <Image> tag from catalogue, with comment for manual review
+          const folderComment = `{/* Original description: ${desc.replace(/\*\//g, '* /')} */}\n`;
+          folderReplacements[fileEntry.relative_path].push({
+            char_start: p.char_start,
+            char_end: p.char_end,
+            new_code: folderComment + catalogueResult.imageTag,
+          });
+        } else {
+          // Step 2: No catalogue match — generate via LLM
+          document.getElementById('folder-current').textContent = `Generating: ${fileEntry.filename} #${pi + 1}: ${desc.substring(0, 50)}...`;
+
+          try {
+            const resp = await fetch('/api/generate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ description: desc, width: w, height: h, upload: doUpload, use_figma_styling: useFigma }),
+            });
+
+            if (folderCancelled) break;
+            const data = await resp.json();
+
+            if (!resp.ok) {
+              failedCount++;
+              resultsContainer.innerHTML += `<div class="error-msg" style="margin-top:8px">${escapeHtml(fileEntry.filename)} #${pi + 1}: ${escapeHtml(data.error || 'Failed')}</div>`;
+            } else {
+              okCount++;
+              data.description = desc;
+              data._request = { width: w, height: h, upload: doUpload, use_figma_styling: useFigma };
+              resultsContainer.innerHTML += renderResultCard(data, 2000 + globalIdx);
+
+              // Wait for upload to complete so replacement has the real URL
+              let draftCode = data.draft_image;
+              if (data.upload_id) {
+                document.getElementById('folder-current').textContent = `Uploading: ${fileEntry.filename} #${pi + 1}...`;
+                const uploadResult = await waitForUpload(data.upload_id);
+                if (uploadResult && uploadResult.draft_image) {
+                  draftCode = uploadResult.draft_image;
+                  const draftEl = document.getElementById(`draft-${2000 + globalIdx}`);
+                  if (draftEl) draftEl.textContent = draftCode;
+                }
+              }
+
+              // Track replacement
+              folderReplacements[fileEntry.relative_path].push({
+                char_start: p.char_start,
+                char_end: p.char_end,
+                new_code: draftCode,
+              });
+
+              // Track SVG filename
+              if (data.filename) {
+                folderSvgMap[fileStem].push(data.filename);
+              }
+            }
+          } catch (e) {
+            failedCount++;
+            resultsContainer.innerHTML += `<div class="error-msg" style="margin-top:8px">${escapeHtml(fileEntry.filename)} #${pi + 1}: ${escapeHtml(e.message)}</div>`;
+          }
+        }
+
+        globalIdx++;
+        // Update progress
+        const elMs = Date.now() - startTime;
+        const pct = Math.round((globalIdx / totalPlaceholders) * 100);
+        document.getElementById('folder-bar').style.width = pct + '%';
+        document.getElementById('folder-pcount').textContent = `${globalIdx} / ${totalPlaceholders}`;
+        if (globalIdx < totalPlaceholders && okCount > 0) {
+          const avgMs = elMs / okCount;
+          const remMs = avgMs * (totalPlaceholders - globalIdx);
+          document.getElementById('folder-eta').textContent = `ETA: ~${formatTime(remMs / 1000)}`;
+        }
+      }
+    }
+
+    // Stop timer
+    if (folderTimerInterval) { clearInterval(folderTimerInterval); folderTimerInterval = null; }
+    const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+
+    // Update progress state
+    document.getElementById('folder-eta').textContent = '';
+    if (folderCancelled) {
+      document.getElementById('folder-title').textContent = `Cancelled — ${okCount + failedCount} of ${totalPlaceholders} processed`;
+      document.getElementById('folder-current').textContent = 'Cancelled by user';
+    } else {
+      document.getElementById('folder-title').textContent = `Completed ${okCount} image(s)`;
+      document.getElementById('folder-current').textContent = 'All done';
+      document.getElementById('folder-bar').style.width = '100%';
+    }
+    document.getElementById('folder-cancel').disabled = true;
+    document.getElementById('folder-cancel').textContent = 'Done';
+
+    // Summary
+    const folderGeneratedCount = okCount - catalogueMatchCount;
+    document.getElementById('folder-summary').innerHTML = `
+      <div class="batch-summary">
+        <div class="stat"><div class="stat-value">${filesWithPlaceholders.length}</div><div class="stat-label">Files processed</div></div>
+        ${catalogueMatchCount ? `<div class="stat"><div class="stat-value" style="color:var(--teal)">${catalogueMatchCount}</div><div class="stat-label">From Catalogue</div></div>` : ''}
+        <div class="stat"><div class="stat-value">${folderGeneratedCount}</div><div class="stat-label">Generated</div></div>
+        <div class="stat"><div class="stat-value ${failedCount ? 'failed' : ''}">${failedCount}</div><div class="stat-label">Failed</div></div>
+        <div class="stat"><div class="stat-value" style="color:var(--blue)">${totalTime}s</div><div class="stat-label">Total time</div></div>
+      </div>`;
+
+    // Download bar
+    if (okCount > 0) {
+      const hasReplacements = Object.values(folderReplacements).some(arr => arr.length > 0);
+      const hasSvgs = Object.values(folderSvgMap).some(arr => arr.length > 0);
+
+      let downloadHtml = `<div class="copy-all-bar"><span>${okCount} image(s) generated across ${filesWithPlaceholders.length} file(s)</span><div class="bar-buttons">`;
+      if (hasReplacements) {
+        downloadHtml += `<button class="btn btn-download" onclick="downloadFolderJsx()">Download JSX ZIP</button>`;
+      }
+      if (hasSvgs) {
+        downloadHtml += `<button class="btn btn-download" onclick="downloadFolderSvgs()">Download SVGs ZIP</button>`;
+      }
+      downloadHtml += `</div></div>`;
+      document.getElementById('folder-download-bar').innerHTML = downloadHtml;
+    }
+
+    btn.disabled = false;
+  }
+
+  async function downloadFolderJsx() {
+    if (!folderData) return;
+
+    // Build file entries — include ALL files (with and without placeholders)
+    const fileEntries = folderData.files.map(f => ({
+      relative_path: f.relative_path,
+      original_content: f.content,
+      replacements: folderReplacements[f.relative_path] || [],
+    }));
+
+    try {
+      const resp = await fetch('/api/folder/download-jsx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          folder_name: folderData.folder_name,
+          files: fileEntries,
+        }),
+      });
+      if (!resp.ok) { alert('Download failed'); return; }
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${folderData.folder_name}-generated.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert('Download error: ' + e.message);
+    }
+  }
+
+  async function downloadFolderSvgs() {
+    if (!folderData) return;
+
+    const fileEntries = Object.entries(folderSvgMap)
+      .filter(([_, svgs]) => svgs.length > 0)
+      .map(([jsxName, svgs]) => ({ jsx_filename: jsxName, svg_filenames: svgs }));
+
+    try {
+      const resp = await fetch('/api/folder/download-svgs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          folder_name: folderData.folder_name,
+          files: fileEntries,
+        }),
+      });
+      if (!resp.ok) { alert('Download failed'); return; }
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${folderData.folder_name}-SVGs.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert('Download error: ' + e.message);
+    }
+  }
+
   // --------------- Keyboard shortcuts ---------------
   document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -1631,6 +2582,7 @@
       if (activePanel.id === 'panel-single') generateSingle();
       else if (activePanel.id === 'panel-batch') generateBatch();
       else if (activePanel.id === 'panel-jsx') generateJsx();
+      else if (activePanel.id === 'panel-folder') generateFolder();
     }
   });
 </script>

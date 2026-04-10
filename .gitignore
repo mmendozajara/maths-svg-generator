@@ -1,15 +1,18 @@
-# Secrets
-.env
+# Generated data files (large, rebuild with scripts)
+clip_embeddings.npz
+image_catalogue.json
+
+# Output SVGs
+output/
 
 # Python
 __pycache__/
 *.pyc
 *.pyo
 
-# IDE / editor
-.claude/
-MEMORY.md
+# Environment
+.env
 
-# Output (generated files)
-output/*.svg
-output/*.png
+# OS
+.DS_Store
+Thumbs.db

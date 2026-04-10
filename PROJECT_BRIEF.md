@@ -7,7 +7,7 @@
 | **Project** | Maths SVG Image Generator |
 | **Purpose** | Generate mathematical diagrams as SVG from natural language, with optional Figma design token styling, validated by vision LLM, hosted as HTTPS URLs for embedding in JSX content |
 | **Team** | Content Production — UK National |
-| **Status** | MVP Complete |
+| **Status** | MVP Complete + Catalogue Search |
 | **Created** | 2026-03-31 |
 
 ## Problem Statement
@@ -25,6 +25,7 @@ This is slow (~15-30 min per diagram) and inconsistent in styling.
 
 An LLM-powered tool that takes a plain English description and produces a ready-to-paste `<DraftImage>` JSX snippet in ~30-60 seconds, with:
 
+- **Image catalogue search** — checks 8,000+ existing images first using hybrid CLIP vision + TF-IDF text search before generating new ones
 - SVG with **optional Figma styling** — toggle between brand colours/fonts or clean generic output (default: generic)
 - **Thinking budget control** — Gemini 3.1 Pro's internal reasoning disabled (default, fastest), capped, or uncapped
 - **Image validation** (cutoff detection + mathematical accuracy + mathematical consistency via vision LLM) — automatic or on-demand via Validate button
@@ -35,8 +36,9 @@ An LLM-powered tool that takes a plain English description and produces a ready-
 - Automatic upload to image hosting (HTTPS URL)
 - Auto-generated accessibility descriptions
 - Web interface with progress tracking, cancel, and batch downloads
-- CLI for single + batch processing (TXT and JSON) + JSX file processing
+- CLI for single + batch processing (TXT and JSON) + JSX file + folder processing
 - **JSX file processing** — upload a JSX file with `image-coming-soon.svg` placeholders, auto-generates all images and outputs the modified JSX
+- **Folder processing** — scan an entire folder of JSX files, process all placeholders, output modified files with checkbox-based file selection
 - **Persistent Chromium browser** for fast SVG-to-PNG rendering (no cold-start per render)
 - **PNG reuse** from validation to upload (eliminates redundant re-render)
 - **Parallel upload** — SVG returned immediately; PNG upload runs in background thread
@@ -48,15 +50,26 @@ An LLM-powered tool that takes a plain English description and produces a ready-
                                 +-----------------+
   User description ----------> |  Flask Web UI   |
   (or CLI / batch TXT/JSON     |  or CLI         |
-   or JSX file with            |                 |
+   or JSX file / folder with   |                 |
    placeholder images)         +--------+--------+
                                          |
                                          v
                                 +-----------------+
-                                |  SVG Generator   |
-                                |  (LLM call via   |
-                                |   OpenRouter)    |
+                                | Catalogue Search |
+                                | (CLIP + TF-IDF   |
+                                |  hybrid search)  |
                                 +--------+--------+
+                                         |
+                                  Match found?
+                                  /          \
+                                YES           NO
+                                 |             |
+                           Use existing        v
+                           <Image> tag  +-----------------+
+                                        |  SVG Generator   |
+                                        |  (LLM call via   |
+                                        |   OpenRouter)    |
+                                        +--------+--------+
                                          |
                            System prompt populated with
                            Figma or generic style guide
@@ -132,13 +145,16 @@ An LLM-powered tool that takes a plain English description and produces a ready-
 
 | Interface | File | Description |
 |-----------|------|-------------|
-| Web UI | `app.py` + `templates/index.html` | Flask app with single/batch/JSX processor tabs, progress bar with ETA, cancel, batch downloads, manual retry, parallel upload polling, Validate button, Download SVG, upload status indicators, Figma styling toggle. `--share` flag for ngrok, respects `PORT` env var for cloud deployment |
-| CLI | `generate.py` | Single + batch (TXT/JSON) + JSX file processing with `--upload` flag |
+| Web UI | `app.py` + `templates/index.html` | Flask app with single/batch/JSX processor/folder processor tabs, catalogue search, progress bar with ETA, cancel, batch downloads, manual retry, parallel upload polling, Validate button, Download SVG, upload status indicators, Figma styling toggle. `--share` flag for ngrok, respects `PORT` env var for cloud deployment |
+| CLI | `generate.py` | Single + batch (TXT/JSON) + JSX file + folder processing with `--upload` flag and catalogue search |
 
 ### Supporting
 
 | Component | File | Description |
 |-----------|------|-------------|
+| Image Search | `image_search.py` | Hybrid CLIP vision + TF-IDF text search over 8,000+ existing images |
+| Catalogue Builder | `build_image_catalogue.py` | Builds `image_catalogue.json` from gold-standard books |
+| CLIP Embeddings | `build_clip_embeddings.py` | Pre-computes CLIP vision embeddings for all catalogue images |
 | Figma Sync | `sync_figma_styles.py` | Pulls design tokens from Figma REST API, updates YAML |
 | System Prompt | `prompts/svg_system.md` | LLM system prompt template with `{{STYLING}}` + `{{STYLE_GUIDE}}` placeholders |
 | Figma Style Guide | `prompts/style_guide_figma.md` | Brand style guide with hardcoded Figma colours, fonts, strokes, and examples |
@@ -155,8 +171,10 @@ An LLM-powered tool that takes a plain English description and produces a ready-
 |---------|-------------|
 | Single generation | Type description, set dimensions, generate with live preview and ETA |
 | Figma styling toggle | Check/uncheck "Use Figma Styling" per tab — applies brand colours/fonts or clean generic output (default: off) |
-| Batch generation | Upload .txt file or type manually, sequential processing with ETA |
-| JSX processing | Upload .jsx file with placeholder images, generate all, download modified JSX |
+| Catalogue search | Auto-checks 8,000+ existing images before generating; shows matches with original description and confidence score |
+| Batch generation | Upload .txt file or type manually, sequential processing with ETA, catalogue search |
+| JSX processing | Upload .jsx file with placeholder images, generate all, download modified JSX, catalogue search with JSX comments |
+| Folder processing | Upload folder of .jsx files, checkbox file selection, catalogue search, sequential processing |
 | File upload zone | Drag-and-drop .txt files (batch) or .jsx files (JSX processor) |
 | Progress bar | Inline progress with live MM:SS timer, item counter, and ETA |
 | Cancel | Stop batch/JSX processing mid-way (completes current item gracefully) |

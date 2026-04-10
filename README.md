@@ -6,13 +6,15 @@ Generate mathematical diagrams as SVG from natural language descriptions, with o
 
 Type a description like _"A number line from 0 to 10 with 3 and 7 marked"_ and get back:
 
-1. A production-ready **SVG** — optionally matching your Figma colour palette and typography, or clean generic styling
-2. A **PNG** uploaded to image hosting (imgbb) with live upload status indicators
-3. A ready-to-paste **`<DraftImage>`** JSX snippet with the HTTPS URL
-4. **Image validation** via vision LLM — checks cutoff, accuracy, and mathematical consistency (automatic or on-demand via Validate button)
-5. **Manual retry** — if validation flags issues, user sees them and decides whether to retry
-6. **Download SVG** — direct download link on every result card
-7. **JSX file processing** — upload a JSX file with `image-coming-soon.svg` placeholders and get back the same file with generated `<DraftImage>` replacements
+1. **Catalogue search** — checks 8,000+ existing images first using hybrid CLIP vision + TF-IDF text search, reusing matches above 30% confidence
+2. A production-ready **SVG** — optionally matching your Figma colour palette and typography, or clean generic styling
+3. A **PNG** uploaded to image hosting (imgbb) with live upload status indicators
+4. A ready-to-paste **`<DraftImage>`** JSX snippet with the HTTPS URL
+5. **Image validation** via vision LLM — checks cutoff, accuracy, and mathematical consistency (automatic or on-demand via Validate button)
+6. **Manual retry** — if validation flags issues, user sees them and decides whether to retry
+7. **Download SVG** — direct download link on every result card
+8. **JSX file processing** — upload a JSX file with `image-coming-soon.svg` placeholders and get back the same file with generated `<DraftImage>` replacements
+9. **Folder processing** — scan an entire folder of JSX files, generate images for all placeholders, output modified files
 
 ```jsx
 <DraftImage
@@ -95,7 +97,7 @@ python generate.py --jsx input.jsx --upload --output output_dir/
 
 ## Web Interface
 
-The web UI at `http://localhost:5000` has three tabs:
+The web UI at `http://localhost:5000` has four tabs:
 
 ### Single Tab
 - Type a description, set dimensions, generate one diagram
@@ -109,19 +111,30 @@ The web UI at `http://localhost:5000` has three tabs:
 ### Batch Tab
 - **File upload** — drag-and-drop a `.txt` file (one description per line)
 - **Manual entry** — type descriptions directly in a textarea
+- **Catalogue search** — automatically checks existing image catalogue before generating; shows catalogue matches with original description
 - **Progress bar** with live timer and item counter
 - **Cancel button** — stop mid-batch (completes current item gracefully)
 - **Retry indication** — shows when image validation triggered retries
-- **Manual retry** — Retry button on individual batch result cards with issues
+- **Manual retry** — Retry button on individual batch result cards with issues; "Generate New Instead" on catalogue matches
 - **Batch downloads** — Download SVGs (.zip), Download Codes (.txt), or Copy All
 
 ### JSX Processor Tab
 - **File upload** — drag-and-drop a `.jsx` file containing placeholder `<DraftImage>` or `<Image>` tags with `image-coming-soon.svg` paths
 - **Placeholder preview** — shows all detected placeholders with editable descriptions, width/height overrides
+- **Catalogue search** — checks existing images first; adds JSX comment with original description before catalogue matches for manual review
 - **Sequential generation** — generates SVGs for each placeholder using the `accessibilityDescription` as the prompt
 - **Progress bar** with live timer and ETA
 - **Cancel button** — stop mid-processing
 - **Download Modified JSX** — outputs the original JSX with all placeholders replaced by generated `<DraftImage>` codes
+
+### Folder Processor Tab
+- **Folder upload** — drag-and-drop a folder of `.jsx` files or select via file picker
+- **File table** — shows all JSX files with placeholder counts; files without placeholders are hidden
+- **Checkbox selection** — include/exclude individual files from processing (default: all checked)
+- **Catalogue search** — checks existing images first; adds JSX comment with original description before catalogue matches
+- **Sequential generation** — processes each file's placeholders in order
+- **Progress bar** with live timer and ETA
+- **Download output** — outputs modified JSX files with all placeholders replaced
 
 Keyboard shortcut: `Ctrl+Enter` to generate.
 
@@ -140,7 +153,8 @@ Options:
   --upload                 Upload to image host, use HTTPS URL in DraftImage
   --batch FILE             Path to .txt or .json file for batch generation
   --jsx FILE               Path to a JSX file — finds placeholder images and generates replacements
-  --output DIR             Output directory for modified JSX file (default: same as input)
+  --folder DIR             Path to a folder of JSX files — scans all files for placeholders
+  --output DIR             Output directory for modified JSX/folder output (default: same as input)
   --config FILE            Path to custom YAML config
   --dry-run                Print SVG without saving
 ```
@@ -181,6 +195,10 @@ python generate.py --jsx lesson_content.jsx --upload
 
 # Output to a specific directory
 python generate.py --jsx lesson_content.jsx --upload --output processed/
+
+# Process an entire folder of JSX files
+python generate.py --folder lessons/ --upload
+python generate.py --folder lessons/ --upload --output processed/
 ```
 
 ## Image Validation
@@ -227,55 +245,91 @@ python sync_figma_styles.py --file-key YOUR_FIGMA_FILE_KEY
 
 This updates `project-configs/default.yaml` so all generated SVGs match your design system. Requires `FIGMA_API_TOKEN` in `.env`.
 
+## Image Catalogue Search
+
+Before generating a new image, the tool searches an existing catalogue of 8,000+ images using a hybrid search approach:
+
+1. **TF-IDF text search** — finds top-50 candidates by description text similarity
+2. **CLIP vision search** — re-ranks candidates using visual similarity (pre-computed embeddings)
+3. **Combined scoring** — `0.4 × TF-IDF + 0.6 × CLIP`, with keyword coverage and extra content penalties
+4. **Auto-threshold** — matches scoring ≥ 30% are used automatically; below that, a new image is generated via LLM
+
+This saves LLM calls and generation time for common diagram types that already exist in the catalogue.
+
+### Building the catalogue
+
+The catalogue and CLIP embeddings are generated files (excluded from git). To rebuild:
+
+```bash
+# Step 1: Build the image catalogue JSON from gold-standard books
+python build_image_catalogue.py
+
+# Step 2: Build CLIP vision embeddings (~2 hours, requires GPU recommended)
+python build_clip_embeddings.py
+```
+
+Both files (`image_catalogue.json` and `clip_embeddings.npz`) are required for hybrid search. Without them, the tool falls back to TF-IDF-only or word overlap search.
+
 ## Project Structure
 
 ```
 Image generator/
-  app.py                   # Flask web server + REST API (incl. /api/validate endpoint)
-  generate.py              # CLI entry point (single + batch + JSX processing)
-  svg_generator.py         # LLM SVG generation + image validation loop
-  validate_image.py        # Vision LLM image validation
-  jsx_embed.py             # DraftImage JSX formatter + placeholder parser
-  upload_imgur.py           # SVG -> PNG -> imgbb/Imgur upload (persistent browser)
-  sync_figma_styles.py      # Figma REST API -> YAML style sync
-  config.py                # YAML + env config loader (incl. style guide selection)
-  llm_client.py            # Thread-safe OpenRouter API client (text + vision + thinking budget)
-  Dockerfile               # Production container (Chromium + gunicorn)
-  .env.example             # Template for required environment variables
-  SETUP.md                 # Setup guide for coworkers
+  app.py                    # Flask web server + REST API (incl. /api/validate, /api/search-catalogue)
+  generate.py               # CLI entry point (single + batch + JSX + folder processing)
+  svg_generator.py          # LLM SVG generation + image validation loop
+  validate_image.py         # Vision LLM image validation
+  image_search.py           # Image catalogue search (hybrid CLIP + TF-IDF)
+  build_image_catalogue.py  # Script to build image_catalogue.json from gold-standard books
+  build_clip_embeddings.py  # Script to build CLIP vision embeddings (.npz)
+  jsx_embed.py              # DraftImage JSX formatter + placeholder parser
+  upload_imgur.py            # SVG -> PNG -> imgbb/Imgur upload (persistent browser)
+  sync_figma_styles.py       # Figma REST API -> YAML style sync
+  config.py                 # YAML + env config loader (incl. style guide selection)
+  llm_client.py             # Thread-safe OpenRouter API client (text + vision + thinking budget)
+  Dockerfile                # Production container (Chromium + gunicorn)
+  .env.example              # Template for required environment variables
+  SETUP.md                  # Setup guide for coworkers
   project-configs/
-    default.yaml            # Colours, fonts, model, dimensions, thinking budget
+    default.yaml             # Colours, fonts, model, dimensions, thinking budget
   prompts/
-    svg_system.md           # LLM system prompt template ({{STYLING}} + {{STYLE_GUIDE}} placeholders)
-    style_guide_figma.md    # Figma brand style guide (colours, fonts, strokes, examples)
-    style_guide_generic.md  # Clean generic style guide (no hardcoded brand values)
-    validate_image.md       # Vision validation prompt (cutoff + accuracy)
+    svg_system.md            # LLM system prompt template ({{STYLING}} + {{STYLE_GUIDE}} placeholders)
+    style_guide_figma.md     # Figma brand style guide (colours, fonts, strokes, examples)
+    style_guide_generic.md   # Clean generic style guide (no hardcoded brand values)
+    validate_image.md        # Vision validation prompt (cutoff + accuracy)
   templates/
-    index.html              # Web UI (single + batch + JSX processor tabs)
-  output/                   # Generated SVG files
-  requirements.txt         # Python dependencies
+    index.html               # Web UI (single + batch + JSX processor + folder processor tabs)
+  output/                    # Generated SVG files (git-ignored)
+  image_catalogue.json       # Built catalogue data (git-ignored, rebuild with build_image_catalogue.py)
+  clip_embeddings.npz        # CLIP embeddings (git-ignored, rebuild with build_clip_embeddings.py)
+  requirements.txt          # Python dependencies
 ```
 
 ## How It Works
 
 ```
-Description --> LLM (Claude) --> SVG --> Validate XML
-                                              |
-                                        Retry if invalid
-                                              |
-                                  SVG --> PNG (persistent Chromium)
-                                              |
-                                       Vision LLM Validation
-                                       (cutoff + accuracy +
-                                        math consistency)
-                                              |
-                                   If issues: show to user
-                                   with Retry button
-                                              |
-                                   PNG upload (background thread)
-                                   --> imgbb --> HTTPS URL
-                                              |
-                                        <DraftImage> JSX snippet
+Description --> Catalogue Search (hybrid CLIP + TF-IDF)
+                         |
+                   Match found?
+                  /            \
+                YES             NO
+                 |               |
+           Use existing    LLM (Gemini) --> SVG --> Validate XML
+           <Image> tag                                   |
+                                                   Retry if invalid
+                                                         |
+                                             SVG --> PNG (persistent Chromium)
+                                                         |
+                                                  Vision LLM Validation
+                                                  (cutoff + accuracy +
+                                                   math consistency)
+                                                         |
+                                              If issues: show to user
+                                              with Retry button
+                                                         |
+                                              PNG upload (background thread)
+                                              --> imgbb --> HTTPS URL
+                                                         |
+                                                   <DraftImage> JSX snippet
 ```
 
 1. **System prompt** is loaded from `prompts/svg_system.md` and populated with styling constants — either Figma brand tokens or generic clean defaults, based on the "Use Figma Styling" toggle (cached via `cache_control`)

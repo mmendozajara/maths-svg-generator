@@ -30,6 +30,7 @@ from jsx_embed import (
     apply_jsx_replacements,
 )
 from upload_imgur import upload_svg
+from image_search import ImageCatalogueSearch
 
 try:
     from llm_client import LLMClient
@@ -52,18 +53,29 @@ def handle_exception(e):
 # ---------------------------------------------------------------------------
 config: ImageGenConfig = None
 client: LLMClient = None
+catalogue: ImageCatalogueSearch = None
 _upload_results = {}  # upload_id -> {"status": "pending"|"done"|"error", ...}
 _upload_lock = threading.Lock()
 
 
 def _init():
-    global config, client
+    global config, client, catalogue
     config = ImageGenConfig()
     if not config.api_key:
         print("ERROR: OPENROUTER_API_KEY not set in .env")
         sys.exit(1)
     client = LLMClient(api_key=config.api_key, max_retries=config.max_retries)
     config.ensure_output_dir()
+
+    # Load image catalogue if available
+    try:
+        catalogue = ImageCatalogueSearch()
+        stats = catalogue.get_stats()
+        print(f"Catalogue: {stats['total_images']:,} images ({stats['method']})")
+    except FileNotFoundError:
+        catalogue = None
+        print("Catalogue: not found (run build_image_catalogue.py to enable)")
+
     print(f"Model: {config.model}")
     print(f"Upload: {'imgbb' if config.imgbb_api_key else 'imgur' if config.imgur_client_id else 'NONE (set IMGBB_API_KEY)'}")
 
@@ -197,6 +209,28 @@ def api_validate():
         return jsonify({"error": f"Validation failed: {e}"}), 500
 
     return jsonify(result)
+
+
+@app.route("/api/search-catalogue", methods=["POST"])
+def api_search_catalogue():
+    """Search the image catalogue for existing images matching a description."""
+    if catalogue is None:
+        return jsonify({"error": "Image catalogue not loaded. Run: python build_image_catalogue.py"}), 404
+
+    data = request.get_json()
+    query = data.get("description", "").strip()
+    top_k = data.get("top_k", 5)
+
+    if not query:
+        return jsonify({"error": "Description is required"}), 400
+
+    results = catalogue.find_matches(query, top_k=top_k, min_score=0.15)
+
+    return jsonify({
+        "query": query,
+        "results": results,
+        "total_catalogue": catalogue.total,
+    })
 
 
 @app.route("/api/batch", methods=["POST"])
@@ -365,6 +399,115 @@ def api_jsx_build():
         mimetype="text/plain",
         as_attachment=True,
         download_name=out_name,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Folder / batch routes
+# ---------------------------------------------------------------------------
+
+@app.route("/api/folder/scan", methods=["POST"])
+def folder_scan():
+    """Scan an uploaded folder for JSX/MDX/TXT files and extract placeholders."""
+    uploaded = request.files.getlist("files")
+    if not uploaded:
+        return jsonify({"error": "No files uploaded"}), 400
+
+    folder_name = uploaded[0].filename.split("/")[0] if "/" in uploaded[0].filename else "unknown"
+
+    files = []
+    for f in uploaded:
+        if not f.filename:
+            continue
+        ext = Path(f.filename).suffix.lower()
+        if ext not in (".jsx", ".mdx", ".txt"):
+            continue
+        content = f.read().decode("utf-8", errors="replace")
+        placeholders = parse_jsx_placeholders(content)
+        files.append({
+            "filename": Path(f.filename).name,
+            "relative_path": f.filename,
+            "content": content,
+            "placeholder_count": len(placeholders),
+            "placeholders": placeholders,
+        })
+
+    # Sort: files with placeholders first, then alphabetically
+    files.sort(key=lambda x: (-x["placeholder_count"], x["filename"]))
+
+    total_placeholders = sum(f["placeholder_count"] for f in files)
+    files_with_placeholders = sum(1 for f in files if f["placeholder_count"] > 0)
+
+    return jsonify({
+        "folder_name": folder_name,
+        "files": files,
+        "total_files": len(files),
+        "total_placeholders": total_placeholders,
+        "files_with_placeholders": files_with_placeholders,
+    })
+
+
+@app.route("/api/folder/download-jsx", methods=["POST"])
+def folder_download_jsx():
+    """Download modified JSX files as a ZIP with replacements applied."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No JSON body"}), 400
+
+    folder_name = data.get("folder_name", "output")
+    file_entries = data.get("files", [])
+    out_folder = f"{folder_name}-generated"
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for entry in file_entries:
+            original = entry.get("original_content", "")
+            replacements = entry.get("replacements", [])
+            if replacements:
+                content = apply_jsx_replacements(original, replacements)
+            else:
+                content = original
+
+            rel = entry.get("relative_path", "")
+            # Replace top-level folder with <folder_name>-generated
+            parts = rel.split("/", 1)
+            new_path = f"{out_folder}/{parts[1]}" if len(parts) > 1 else f"{out_folder}/{rel}"
+            zf.writestr(new_path, content)
+
+    buf.seek(0)
+    return send_file(
+        buf,
+        mimetype="application/zip",
+        as_attachment=True,
+        download_name=f"{out_folder}.zip",
+    )
+
+
+@app.route("/api/folder/download-svgs", methods=["POST"])
+def folder_download_svgs():
+    """Download generated SVGs grouped by JSX file as a ZIP."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No JSON body"}), 400
+
+    folder_name = data.get("folder_name", "output")
+    file_entries = data.get("files", [])
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for entry in file_entries:
+            jsx_name = entry.get("jsx_filename", "unknown")
+            for svg_filename in entry.get("svg_filenames", []):
+                svg_path = config.output_dir / svg_filename
+                if svg_path.exists():
+                    zf.write(svg_path, f"{jsx_name}/{svg_filename}")
+
+    buf.seek(0)
+    return send_file(
+        buf,
+        mimetype="application/zip",
+        as_attachment=True,
+        download_name=f"{folder_name}-SVGs.zip",
     )
 
 

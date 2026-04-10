@@ -1,5 +1,9 @@
 """CLI entry point for the Maths SVG Image Generator.
 
+Searches an existing image catalogue (8,000+ images) before generating new ones.
+Uses hybrid CLIP vision + TF-IDF text search; falls back to LLM generation when
+no suitable match is found (threshold: 30%).
+
 Usage:
     # Single image
     python generate.py "A number line from 0 to 10 with 3 and 7 marked"
@@ -19,6 +23,10 @@ Usage:
     # JSX file processing — find placeholder images and generate replacements
     python generate.py --jsx input.jsx --upload
     python generate.py --jsx input.jsx --upload --output output_dir/
+
+    # Folder processing — scan all JSX files in a folder
+    python generate.py --folder lessons/ --upload
+    python generate.py --folder lessons/ --upload --output processed/
 
     # Dry run (print LLM response, don't save)
     python generate.py "A bar chart of pets: dogs 5, cats 3" --dry-run
@@ -50,6 +58,57 @@ try:
     from llm_client import LLMClient
 except ImportError:
     from utils.llm_client import LLMClient
+
+# Try to load image catalogue for reuse of existing images
+try:
+    from image_search import ImageCatalogueSearch
+    HAS_CATALOGUE = True
+except ImportError:
+    HAS_CATALOGUE = False
+
+CATALOGUE_THRESHOLD = 0.30
+_catalogue = None
+
+
+def _get_catalogue():
+    """Lazily load the image catalogue (singleton)."""
+    global _catalogue
+    if _catalogue is not None:
+        return _catalogue
+    if not HAS_CATALOGUE:
+        return None
+    try:
+        _catalogue = ImageCatalogueSearch()
+        stats = _catalogue.get_stats()
+        print(f"  Catalogue: {stats['total_images']:,} images ({stats['method']})")
+        return _catalogue
+    except FileNotFoundError:
+        return None
+
+
+def _search_catalogue(desc: str, w: int, h: int):
+    """Search catalogue for an existing image. Returns (image_tag, match_info) or (None, None)."""
+    cat = _get_catalogue()
+    if cat is None:
+        return None, None
+    results = cat.find_matches(desc, top_k=1, min_score=CATALOGUE_THRESHOLD)
+    if not results:
+        return None, None
+    match = results[0]
+    path = match.get("image_path", "")
+    match_desc = match.get("description", desc)
+    score_pct = round(match["score"] * 100)
+
+    # Build <Image> tag
+    image_tag = (
+        f'<Image\n'
+        f'  path="{path}"\n'
+        f'  width={{{w}}}\n'
+        f'  height={{{h}}}\n'
+        f'  accessibilityDescription="{match_desc}"\n'
+        f'/>'
+    )
+    return image_tag, {"score": match["score"], "score_pct": score_pct, "description": match_desc, "book": match.get("book_title", ""), "url": match.get("image_url", "")}
 
 
 def _sanitize_filename(name: str) -> str:
@@ -250,6 +309,7 @@ def _run_batch(
     print(f"Source: {batch_path}")
     results = []
 
+    catalogue_hits = 0
     for i, req in enumerate(requests_data, 1):
         desc = req.get("description", "")
         if not desc:
@@ -257,13 +317,27 @@ def _run_batch(
             continue
 
         name = req.get("id", None)
-        w = req.get("width", width)
-        h = req.get("height", height)
+        w = req.get("width", width) or config.default_width
+        h = req.get("height", height) or config.default_height
+
+        # Search catalogue first
+        image_tag, match_info = _search_catalogue(desc, w, h)
+        if image_tag:
+            catalogue_hits += 1
+            print(f"\n[{i}/{len(requests_data)}] CATALOGUE MATCH ({match_info['score_pct']}%): {desc[:60]}...")
+            print(f"    Source: {match_info['book']}")
+            print(f"\n--- Image Embed (catalogue) ---")
+            print(image_tag)
+            results.append({"description": desc, "draft_image": image_tag, "catalogue_match": True})
+            continue
 
         print(f"\n[{i}/{len(requests_data)}]")
         result = _generate_single(client, desc, config, name, w, h, dry_run, upload)
         if result:
             results.append(result)
+
+    if catalogue_hits:
+        print(f"\n  Catalogue matches: {catalogue_hits} / {len(requests_data)}")
 
     return results
 
@@ -305,6 +379,7 @@ def _run_jsx(
 
     replacements = []
     generated = 0
+    catalogue_hits = 0
     failed = 0
     total_start = time.time()
 
@@ -319,6 +394,21 @@ def _run_jsx(
             failed += 1
             continue
 
+        # Search catalogue first
+        image_tag, match_info = _search_catalogue(desc, w, h)
+        if image_tag:
+            catalogue_hits += 1
+            print(f"  [{idx + 1}/{len(placeholders)}] CATALOGUE MATCH ({match_info['score_pct']}%): {desc[:60]}...")
+            comment = f"{{/* Original description: {desc.replace('*/', '* /')} */}}\n"
+            replacements.append({
+                "char_start": p["char_start"],
+                "char_end": p["char_end"],
+                "new_code": comment + image_tag,
+            })
+            generated += 1
+            continue
+
+        # No catalogue match — generate via LLM
         print(f"  [{idx + 1}/{len(placeholders)}] Generating: {desc[:60]}...")
 
         start = time.time()
@@ -407,7 +497,9 @@ def _run_jsx(
     print(f"\n{'='*60}")
     print(f"JSX Processing Summary:")
     print(f"  Placeholders found: {len(placeholders)}")
-    print(f"  Generated: {generated}")
+    if catalogue_hits:
+        print(f"  From catalogue: {catalogue_hits}")
+    print(f"  Generated (LLM): {generated - catalogue_hits}")
     print(f"  Failed/skipped: {failed}")
     print(f"  Total time: {total_elapsed:.1f}s")
     if out_path:
@@ -416,8 +508,226 @@ def _run_jsx(
     return {
         "total": len(placeholders),
         "generated": generated,
+        "catalogue_hits": catalogue_hits,
         "failed": failed,
         "output_path": str(out_path) if out_path else None,
+        "total_time": round(total_elapsed, 1),
+    }
+
+
+def _run_folder(
+    client: LLMClient,
+    folder_path: str,
+    config: ImageGenConfig,
+    upload: bool = False,
+    output_dir: str = None,
+) -> dict:
+    """Process a folder of JSX files — find placeholders in each, generate SVGs, output modified files.
+
+    Returns a summary dict.
+    """
+    import shutil
+
+    folder = Path(folder_path)
+    if not folder.is_dir():
+        print(f"Error: Folder not found: {folder_path}")
+        return {"error": "Folder not found"}
+
+    print(f"\nFolder Processor")
+    print(f"  Input: {folder}")
+
+    # Scan for JSX/MDX files
+    jsx_files = sorted(
+        [p for p in folder.rglob("*") if p.suffix.lower() in (".jsx", ".mdx")],
+        key=lambda p: p.name,
+    )
+
+    if not jsx_files:
+        print("  No .jsx or .mdx files found in folder.")
+        return {"total_files": 0, "total_placeholders": 0}
+
+    # Parse placeholders in each file
+    file_data = []
+    for jsx_file in jsx_files:
+        content = jsx_file.read_text(encoding="utf-8")
+        placeholders = parse_jsx_placeholders(content)
+        rel_path = jsx_file.relative_to(folder)
+        file_data.append({
+            "path": jsx_file,
+            "relative_path": rel_path,
+            "content": content,
+            "placeholders": placeholders,
+        })
+
+    # Summary table
+    total_placeholders = sum(len(f["placeholders"]) for f in file_data)
+    files_with = [f for f in file_data if f["placeholders"]]
+    files_without = [f for f in file_data if not f["placeholders"]]
+
+    print(f"\n  {'File':<40} {'Placeholders':>12}")
+    print(f"  {'─'*40} {'─'*12}")
+    for f in file_data:
+        count = len(f["placeholders"])
+        marker = "" if count > 0 else " (skip)"
+        print(f"  {str(f['relative_path']):<40} {count:>12}{marker}")
+    print(f"\n  Total: {len(jsx_files)} file(s), {total_placeholders} placeholder(s) to generate")
+    print(f"  Files with placeholders: {len(files_with)}")
+    print(f"  Files without (will be copied): {len(files_without)}")
+
+    if total_placeholders == 0:
+        print("\n  No placeholders found in any file.")
+        return {"total_files": len(jsx_files), "total_placeholders": 0}
+
+    # Determine output directory
+    if output_dir:
+        out_dir = Path(output_dir)
+    else:
+        out_dir = folder.parent / f"{folder.name}-generated"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    print(f"\n  Output: {out_dir}")
+
+    # Copy files without placeholders
+    for f in files_without:
+        dest = out_dir / f["relative_path"]
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(f["path"], dest)
+        print(f"  Copied: {f['relative_path']}")
+
+    # Process files with placeholders
+    total_generated = 0
+    total_catalogue = 0
+    total_failed = 0
+    total_start = time.time()
+    placeholder_num = 0
+
+    for f in files_with:
+        print(f"\n{'='*60}")
+        print(f"Processing: {f['relative_path']} ({len(f['placeholders'])} placeholders)")
+
+        replacements = []
+
+        for p in f["placeholders"]:
+            placeholder_num += 1
+            desc = p["description"]
+            w = p["width"]
+            h = p["height"]
+
+            if not desc:
+                print(f"  [{placeholder_num}/{total_placeholders}] SKIPPED — no description")
+                total_failed += 1
+                continue
+
+            # Search catalogue first
+            image_tag, match_info = _search_catalogue(desc, w, h)
+            if image_tag:
+                total_catalogue += 1
+                total_generated += 1
+                print(f"  [{placeholder_num}/{total_placeholders}] CATALOGUE MATCH ({match_info['score_pct']}%): {desc[:60]}...")
+                comment = f"{{/* Original description: {desc.replace('*/', '* /')} */}}\n"
+                replacements.append({
+                    "char_start": p["char_start"],
+                    "char_end": p["char_end"],
+                    "new_code": comment + image_tag,
+                })
+                continue
+
+            # No catalogue match — generate via LLM
+            print(f"  [{placeholder_num}/{total_placeholders}] Generating: {desc[:60]}...")
+
+            start = time.time()
+            try:
+                svg_string, metadata = generate_svg(client, desc, config, w, h)
+            except (RuntimeError, ValueError) as e:
+                print(f"    FAILED: {e}")
+                total_failed += 1
+                continue
+            elapsed = time.time() - start
+
+            cached_png = metadata.pop("_png_bytes", None)
+
+            v = metadata.get("validation", {})
+            v_status = v.get("status", "none")
+            v_attempts = v.get("attempts", 1)
+            retry_info = f" (retried {v_attempts - 1}x)" if v_attempts > 1 else ""
+            print(f"    Done in {elapsed:.1f}s — {v_status}{retry_info}")
+
+            # Save SVG locally
+            config.ensure_output_dir()
+            safe_name = _sanitize_filename(metadata.get("type", "diagram"))
+            filename = f"{safe_name}_{int(time.time())}_{placeholder_num}.svg"
+            svg_path = config.output_dir / filename
+            svg_path.write_text(svg_string, encoding="utf-8")
+
+            # Build replacement DraftImage code
+            if upload and config.has_upload_key:
+                try:
+                    upload_result = upload_svg(
+                        svg_content=svg_string,
+                        width=w,
+                        height=h,
+                        title=metadata.get("title", "Maths Diagram"),
+                        description=metadata.get("accessibility_description", ""),
+                        png_bytes=cached_png,
+                    )
+                    hosted_url = upload_result["url"]
+                    host_name = upload_result["host"]
+                    draft_code = format_draft_image_url(hosted_url, metadata, w, h)
+                    print(f"    Uploaded to {host_name}: {hosted_url}")
+                except Exception as e:
+                    print(f"    Upload failed: {e} — using placeholder")
+                    draft_code = format_draft_image(svg_string, metadata, w, h)
+            else:
+                draft_code = format_draft_image(svg_string, metadata, w, h)
+
+            replacements.append({
+                "char_start": p["char_start"],
+                "char_end": p["char_end"],
+                "new_code": draft_code,
+            })
+            total_generated += 1
+
+            # ETA
+            elapsed_total = time.time() - total_start
+            remaining = total_placeholders - placeholder_num
+            if total_generated > 0:
+                avg = elapsed_total / total_generated
+                eta = avg * remaining
+                print(f"    ETA: ~{eta:.0f}s remaining ({remaining} left)")
+
+        # Apply replacements and write output file
+        if replacements:
+            modified = apply_jsx_replacements(f["content"], replacements)
+        else:
+            modified = f["content"]
+
+        dest = out_dir / f["relative_path"]
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(modified, encoding="utf-8")
+        print(f"  Output: {dest}")
+
+    total_elapsed = time.time() - total_start
+    print(f"\n{'='*60}")
+    print(f"Folder Processing Summary:")
+    print(f"  Files processed: {len(file_data)}")
+    print(f"  Files with placeholders: {len(files_with)}")
+    print(f"  Files copied (no placeholders): {len(files_without)}")
+    print(f"  Placeholders found: {total_placeholders}")
+    if total_catalogue:
+        print(f"  From catalogue: {total_catalogue}")
+    print(f"  Generated (LLM): {total_generated - total_catalogue}")
+    print(f"  Failed/skipped: {total_failed}")
+    print(f"  Total time: {total_elapsed:.1f}s")
+    print(f"  Output directory: {out_dir}")
+
+    return {
+        "total_files": len(file_data),
+        "files_with_placeholders": len(files_with),
+        "files_copied": len(files_without),
+        "total_placeholders": total_placeholders,
+        "generated": total_generated,
+        "catalogue_hits": total_catalogue,
+        "failed": total_failed,
+        "output_dir": str(out_dir),
         "total_time": round(total_elapsed, 1),
     }
 
@@ -442,9 +752,14 @@ def main():
         help="Path to a JSX file — finds placeholder images (image-coming-soon.svg) and generates replacements",
     )
     parser.add_argument(
+        "--folder",
+        type=str,
+        help="Path to a folder of JSX files — scans all JSX files for placeholders and processes them",
+    )
+    parser.add_argument(
         "--output",
         type=str,
-        help="Output directory for modified JSX file (default: same directory as input)",
+        help="Output directory for modified JSX/folder output (default: same directory as input)",
     )
     parser.add_argument(
         "--name",
@@ -479,8 +794,8 @@ def main():
 
     args = parser.parse_args()
 
-    if not args.description and not args.batch and not args.jsx:
-        parser.error("Provide a description, --batch file, or --jsx file")
+    if not args.description and not args.batch and not args.jsx and not args.folder:
+        parser.error("Provide a description, --batch file, --jsx file, or --folder directory")
 
     # Load config
     config = ImageGenConfig(args.config)
@@ -505,6 +820,15 @@ def main():
         print(f"Upload: {host} (HTTPS URLs)")
 
     start_time = time.time()
+
+    if args.folder:
+        # Folder processing mode
+        folder_result = _run_folder(client, args.folder, config, args.upload, args.output)
+
+        usage = client.get_usage_summary()
+        print(f"  LLM calls: {usage['total_calls']}")
+        print(f"  Tokens: {usage['total_input_tokens']:,} in / {usage['total_output_tokens']:,} out")
+        return
 
     if args.jsx:
         # JSX processing mode — has its own summary

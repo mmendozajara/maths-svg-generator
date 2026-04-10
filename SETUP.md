@@ -109,7 +109,7 @@ Open **http://localhost:5000** in your browser. That's it!
 - Switch to the **Batch** tab
 - Upload a `.txt` file (one description per line) or type multiple descriptions
 - Optionally check **Use Figma Styling**
-- Click **Generate All**
+- Click **Generate All** — the tool checks the image catalogue first, then generates new images for anything not found
 - Download results as ZIP or copy all codes at once
 
 ### JSX Processor mode
@@ -118,8 +118,16 @@ Open **http://localhost:5000** in your browser. That's it!
 - Upload a `.jsx` file containing placeholder `<DraftImage>` or `<Image>` tags with `image-coming-soon.svg` paths
 - Review the detected placeholders — edit descriptions or dimensions if needed
 - Optionally check **Use Figma Styling**
-- Click **Generate All** to process each placeholder sequentially
+- Click **Generate All** — catalogue matches are used automatically; a JSX comment with the original description is added for manual review
 - Click **Download Modified JSX** to get the file with all placeholders replaced
+
+### Folder Processor mode
+
+- Switch to the **Folder Processor** tab
+- Upload a folder of `.jsx` files
+- Review the file table — files without placeholders are hidden; uncheck files to exclude them
+- Click **Generate All** — processes all checked files, using catalogue matches where available
+- Download the modified JSX files with placeholders replaced
 
 ## Troubleshooting
 
