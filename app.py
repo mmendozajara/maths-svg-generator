@@ -30,7 +30,11 @@ from jsx_embed import (
     apply_jsx_replacements,
 )
 from upload_imgur import upload_svg
-from image_search import ImageCatalogueSearch
+try:
+    from image_search import ImageCatalogueSearch
+    HAS_CATALOGUE = True
+except ImportError:
+    HAS_CATALOGUE = False
 
 try:
     from llm_client import LLMClient
@@ -53,7 +57,7 @@ def handle_exception(e):
 # ---------------------------------------------------------------------------
 config: ImageGenConfig = None
 client: LLMClient = None
-catalogue: ImageCatalogueSearch = None
+catalogue = None
 _upload_results = {}  # upload_id -> {"status": "pending"|"done"|"error", ...}
 _upload_lock = threading.Lock()
 
@@ -67,14 +71,17 @@ def _init():
     client = LLMClient(api_key=config.api_key, max_retries=config.max_retries)
     config.ensure_output_dir()
 
-    # Load image catalogue if available
-    try:
-        catalogue = ImageCatalogueSearch()
-        stats = catalogue.get_stats()
-        print(f"Catalogue: {stats['total_images']:,} images ({stats['method']})")
-    except FileNotFoundError:
-        catalogue = None
-        print("Catalogue: not found (run build_image_catalogue.py to enable)")
+    # Load image catalogue if available (requires numpy, scikit-learn, sentence-transformers)
+    if HAS_CATALOGUE:
+        try:
+            catalogue = ImageCatalogueSearch()
+            stats = catalogue.get_stats()
+            print(f"Catalogue: {stats['total_images']:,} images ({stats['method']})")
+        except FileNotFoundError:
+            catalogue = None
+            print("Catalogue: not found (run build_image_catalogue.py to enable)")
+    else:
+        print("Catalogue: disabled (install numpy, scikit-learn, sentence-transformers to enable)")
 
     print(f"Model: {config.model}")
     print(f"Upload: {'imgbb' if config.imgbb_api_key else 'imgur' if config.imgur_client_id else 'NONE (set IMGBB_API_KEY)'}")
