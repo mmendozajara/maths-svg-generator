@@ -86,12 +86,17 @@ def format_draft_image_url(
 
 # Matches <DraftImage .../> or <Image .../> containing the placeholder
 # path "image-coming-soon.svg".
+# The attribute body alternates between full quoted strings and any non-quote,
+# non-`>` character, so a literal `>` inside an attribute value (e.g.
+# accessibilityDescription="show 6 > 5") doesn't prematurely close the tag.
 # Uses re.DOTALL so attributes can span multiple lines.
 _PLACEHOLDER_TAG_RE = re.compile(
     r"<(DraftImage|Image)\s+"  # opening tag: DraftImage or Image
-    r"((?:[^>]|\n)*?"  # attributes before the path/url
+    r"("
+    r"(?:\"[^\"]*\"|[^>\"])*?"  # attributes before the path/url
     r"(?:path|url|src)\s*=\s*\"[^\"]*image-coming-soon[^\"]*\""  # placeholder marker
-    r"(?:[^>]|\n)*?)"  # attributes after
+    r"(?:\"[^\"]*\"|[^>\"])*?"  # attributes after
+    r")"
     r"/\s*>",  # self-closing
     re.DOTALL,
 )
